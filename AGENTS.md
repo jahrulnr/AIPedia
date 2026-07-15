@@ -13,9 +13,13 @@ Instructions for any coding agent working in this repo.
 ```
 infra/          Docker infra (Dockerfile, nginx/, php/, supervisord.conf, start.sh)
 web/            Laravel app (default structure, App\ namespace)
+docs/           Gap tracker (plan vs development) + any human docs
+CHANGELOG.md    Release / feature notes
 compose.yml     Docker Compose
 Makefile        Convenience commands
 ```
+
+**Before implementing webchat from contracts:** update/read [`docs/webchat-plan-gap.md`](docs/webchat-plan-gap.md), then add a bullet under `[Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md) when status flips.
 
 ## Setup
 
