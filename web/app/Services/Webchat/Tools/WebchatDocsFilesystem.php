@@ -174,7 +174,7 @@ class WebchatDocsFilesystem
             'tool' => 'docs_filesystem',
             'data' => $data,
             'error' => null,
-            'meta' => ['truncated' => $truncated, 'count' => $data['count'] ?? count($data['entries'] ?? $data['matches'] ?? [])],
+            'meta' => ['truncated' => $truncated, 'count' => $data['count'] ?? count($data['entries'] ?? $data['matches'] ?? []), 'data_is_untrusted' => true],
         ];
     }
 
@@ -185,7 +185,7 @@ class WebchatDocsFilesystem
             'tool' => 'docs_filesystem',
             'data' => null,
             'error' => ['code' => $code, 'message' => $message],
-            'meta' => ['truncated' => false, 'count' => 0],
+            'meta' => ['truncated' => false, 'count' => 0, 'data_is_untrusted' => true],
         ];
     }
 }

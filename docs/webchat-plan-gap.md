@@ -31,6 +31,14 @@ Update a row when you land a PR/commit. Add a short `CHANGELOG.md` entry under `
 
 ---
 
+## Agent safety boundaries
+
+| Topic | Plan | Status | App notes / files |
+|---|---|---|---|
+| Untrusted user, session, and tool data | canon | `done` | Prompts delimit user/session data, reject embedded instructions, and docs-tool envelopes set `data_is_untrusted=true` |
+
+---
+
 ## StartTurn pipeline
 
 | Step | Contract | Status |
@@ -96,4 +104,4 @@ Update a row when you land a PR/commit. Add a short `CHANGELOG.md` entry under `
 | Context compaction | `done` | Token-estimated checkpoint summary preserves original JSONL and retains recent turns in the LLM prompt |
 | Model context/output budgets | `done` | Provider-model metadata bounds input/output requests and compaction uses the lowest enabled-provider input budget |
 
-Last reviewed: 2026-07-15 (RetryTurn / ResumeChatTurn).
+Last reviewed: 2026-07-16 (untrusted prompt and tool-data boundary).

@@ -55,6 +55,7 @@ class SearchDocsTest extends TestCase
         $this->assertTrue($result['ok']);
         $this->assertSame('search_docs', $result['tool']);
         $this->assertTrue($result['meta']['index_ready']);
+        $this->assertTrue($result['meta']['data_is_untrusted']);
         $this->assertCount(1, $result['data']['chunks']);
         $this->assertSame('sample/voucher.md', $result['data']['chunks'][0]['path']);
         $this->assertSame('Voucher Guide', $result['data']['chunks'][0]['title']);
@@ -92,6 +93,7 @@ class SearchDocsTest extends TestCase
         $this->assertFalse($result['ok']);
         $this->assertSame('docs_index_not_ready', $result['error']['code']);
         $this->assertSame('building', $result['meta']['index_status']);
+        $this->assertTrue($result['meta']['data_is_untrusted']);
     }
 
     private function rrmdir(string $dir): void

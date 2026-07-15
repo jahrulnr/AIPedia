@@ -33,10 +33,12 @@ class DocsFilesystemTest extends TestCase
         $this->assertTrue($tool->listDir(['path' => ''])['ok']);
         $read = $tool->readFile(['path' => 'nested/guide.md']);
         $this->assertTrue($read['ok']);
+        $this->assertTrue($read['meta']['data_is_untrusted']);
         $this->assertStringContainsString('searchable content', $read['data']['content']);
 
         $grep = $tool->grep(['query' => 'searchable', 'path' => '']);
         $this->assertTrue($grep['ok']);
+        $this->assertTrue($grep['meta']['data_is_untrusted']);
         $this->assertSame('nested/guide.md', $grep['data']['matches'][0]['path']);
 
         $this->assertFalse($tool->readFile(['path' => 'secret.txt'])['ok']);

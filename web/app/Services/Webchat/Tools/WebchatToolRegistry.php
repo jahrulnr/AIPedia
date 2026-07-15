@@ -118,6 +118,7 @@ class WebchatToolRegistry
             'meta' => [
                 'truncated' => false,
                 'took_ms' => (int) ((microtime(true) - $started) * 1000),
+                'data_is_untrusted' => true,
             ],
         ];
     }

@@ -43,6 +43,7 @@ class SearchDocsTool
                     'count' => 0,
                     'index_ready' => false,
                     'index_status' => $gate['status'],
+                    'data_is_untrusted' => true,
                 ],
             ];
         }
@@ -59,6 +60,7 @@ class SearchDocsTool
                 'count' => count($hits),
                 'index_ready' => true,
                 'index_status' => 'ready',
+                'data_is_untrusted' => true,
             ],
         ];
     }
@@ -75,6 +77,7 @@ class SearchDocsTool
                 'truncated' => false,
                 'index_ready' => $gate['usable'],
                 'index_status' => $gate['status'],
+                'data_is_untrusted' => true,
             ],
         ];
     }

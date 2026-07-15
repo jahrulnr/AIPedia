@@ -24,6 +24,7 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 - Manual rename: `PATCH /aipedia/webchat/threads/{id}` (`title_source=manual` locks auto).
 - Housekeep idle conversations: `webchat:housekeep-conversations` (scheduler daily 03:15, TTL 7d).
 - Dashboard floating launcher: last + New + full-page link (`partials/float`).
+- Webchat prompt-injection boundary: user text, session hints, documentation content, filenames, excerpts, errors, and tool payloads are untrusted data rather than instructions; docs-tool envelopes expose `meta.data_is_untrusted=true`.
 
 ### Added
 
