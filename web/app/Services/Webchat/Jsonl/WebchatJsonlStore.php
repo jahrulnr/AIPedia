@@ -218,6 +218,64 @@ class WebchatJsonlStore
         ]));
     }
 
+    /**
+     * Soft-delete: tombstone index + best-effort remove thread/lock/interrupt files.
+     *
+     * @throws \RuntimeException not_found|forbidden|busy
+     */
+    public function deleteConversation(string $threadId, int $adminUserId, bool $requireOwner = false): void
+    {
+        $prev = $this->resolveConversation($threadId);
+        if ($prev === null) {
+            throw new \RuntimeException('not_found');
+        }
+        if ($requireOwner) {
+            $owner = (int) ($prev['created_by_admin_user_id'] ?? $prev['admin_user_id'] ?? 0);
+            if ($owner !== $adminUserId && (int) ($prev['admin_user_id'] ?? 0) !== $adminUserId) {
+                throw new \RuntimeException('forbidden');
+            }
+        }
+
+        $lockPath = $this->cfg->storageRoot . '/threads/' . $threadId . '.lock';
+        if (file_exists($lockPath)) {
+            throw new \RuntimeException('busy');
+        }
+
+        $jsonl = $this->threadPath($threadId);
+        $seq = $this->cfg->storageRoot . '/threads/' . $threadId . '.seq';
+        if (is_file($jsonl)) {
+            @unlink($jsonl);
+        }
+        if (is_file($seq)) {
+            @unlink($seq);
+        }
+
+        $interruptDir = $this->cfg->storageRoot . '/interrupt/' . $threadId;
+        if (is_dir($interruptDir)) {
+            foreach (glob($interruptDir . '/*') ?: [] as $f) {
+                @unlink($f);
+            }
+            @rmdir($interruptDir);
+        }
+
+        $now = microtime(true);
+        $this->appendConversationMeta([
+            'thread_id' => $threadId,
+            'created_by_admin_user_id' => (int) ($prev['created_by_admin_user_id'] ?? $prev['admin_user_id'] ?? $adminUserId),
+            'admin_user_id' => (int) ($prev['admin_user_id'] ?? $adminUserId),
+            'title' => $prev['title'] ?? null,
+            'title_source' => $prev['title_source'] ?? 'pending',
+            'status' => 'deleted',
+            'path' => $prev['path'] ?? $jsonl,
+            'updated_at' => $now,
+            'last_activity_at' => $prev['last_activity_at'] ?? $now,
+            'floor_holder_admin_id' => null,
+            'floor_last_turn_at' => null,
+            'active_turn_id' => null,
+            'active_turn_initiator_admin_id' => null,
+        ]);
+    }
+
     private function threadPath(string $threadId): string
     {
         return $this->cfg->storageRoot . '/threads/' . $threadId . '.jsonl';

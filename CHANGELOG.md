@@ -11,10 +11,12 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 
 ## [Unreleased]
 
-### Deferred
+### Added
 
-- AI auto-title + HK idle purge (>7d)
-- Dashboard floating webchat launcher
+- AI auto-title after first completed turn (`ProcessThreadTitleJob` / stub truncate).
+- Manual rename: `PATCH /aipedia/webchat/threads/{id}` (`title_source=manual` locks auto).
+- Housekeep idle conversations: `webchat:housekeep-conversations` (scheduler daily 03:15, TTL 7d).
+- Dashboard floating launcher: last + New + full-page link (`partials/float`).
 
 ---
 

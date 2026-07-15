@@ -12,6 +12,7 @@ use App\Services\Webchat\Jsonl\WebchatThreadLock;
 use App\Services\Webchat\Tools\SearchDocsTool;
 use App\Services\Webchat\Tools\WebchatToolRegistry;
 use App\Services\Webchat\WebchatConfig;
+use App\Services\Webchat\WebchatTitleService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -91,6 +92,14 @@ class ProcessChatTurnJob implements ShouldQueue
                 $this->runStub($store, $cfg);
             } else {
                 $this->runAgent($store, $cfg);
+            }
+
+            if ($this->turnCompleted($store)) {
+                (new WebchatTitleService($cfg, $store))->scheduleIfNeeded(
+                    $this->threadId,
+                    (int) ($this->admin['admin_user_id'] ?? 0),
+                    (string) ($this->admin['locale'] ?? 'id')
+                );
             }
 
             Log::info('webchat.turn_completed', [
@@ -340,6 +349,24 @@ class ProcessChatTurnJob implements ShouldQueue
             if (file_exists($flagPath)) {
                 @unlink($flagPath);
                 return true;
+            }
+        }
+        return false;
+    }
+
+    private function turnCompleted(WebchatJsonlStore $store): bool
+    {
+        $lines = $store->readThread($this->threadId);
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            $line = $lines[$i];
+            if (($line['turn_id'] ?? '') !== $this->turnId) {
+                continue;
+            }
+            if (($line['type'] ?? '') === 'turn.completed') {
+                return true;
+            }
+            if (($line['type'] ?? '') === 'turn.failed') {
+                return false;
             }
         }
         return false;

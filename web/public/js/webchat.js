@@ -402,5 +402,6 @@
         if (e.key === 'Enter') send();
     });
 
+    window.webchatUi = { newChat: newChat, boot: boot };
     boot();
 })();

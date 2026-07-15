@@ -4,6 +4,10 @@
 
 @section('nav-dashboard', 'active')
 
+@push('scripts')
+    @include('aipedia.webchat.partials.float', ['adminUserId' => 1])
+@endpush
+
 @section('content')
     <div class="d-sm-flex align-items-center justify-content-between mb-4 page-title">
         <div>

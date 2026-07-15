@@ -19,4 +19,5 @@ return [
     'turn_job_timeout_sec' => (int) env('WEBCHAT_TURN_JOB_TIMEOUT_SEC', 120),
     'turn_rate_limit_per_min' => (int) env('WEBCHAT_TURN_RATE_LIMIT_PER_MIN', 10),
     'speak_floor_ttl_sec' => (int) env('WEBCHAT_SPEAK_FLOOR_TTL_SEC', 600),
+    'conversation_idle_ttl_days' => (int) env('WEBCHAT_CONVERSATION_IDLE_TTL_DAYS', 7),
 ];

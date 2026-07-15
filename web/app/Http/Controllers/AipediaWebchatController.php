@@ -12,6 +12,7 @@ use App\Services\Webchat\WebchatFloorLockedException;
 use App\Services\Webchat\WebchatRateLimitedException;
 use App\Services\Webchat\WebchatRedactSecrets;
 use App\Services\Webchat\WebchatSpeakFloor;
+use App\Services\Webchat\WebchatTitleService;
 use App\Services\Webchat\WebchatTurnRateLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -225,6 +226,37 @@ class AipediaWebchatController extends Controller
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
             'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    public function rename(Request $request, string $threadId): JsonResponse
+    {
+        $cfg = WebchatConfig::load();
+        $store = new WebchatJsonlStore($cfg);
+        $titles = new WebchatTitleService($cfg, $store);
+        $admin = $this->admin($request);
+
+        if (!$store->canAccessConversation($threadId, $admin['admin_user_id'])) {
+            return response()->json(['error' => 'not_found'], 404);
+        }
+
+        $title = trim((string) $request->input('title', ''));
+        if ($title === '' || mb_strlen($title) > 60) {
+            return response()->json(['error' => 'validation', 'code' => 'invalid_title'], 422);
+        }
+
+        try {
+            $titles->apply($threadId, $admin['admin_user_id'], $title, 'manual');
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'deleted') {
+                return response()->json(['error' => 'not_found'], 404);
+            }
+            throw $e;
+        }
+
+        return response()->json([
+            'thread_id' => $threadId,
+            'title' => mb_substr($title, 0, 60),
         ]);
     }
 

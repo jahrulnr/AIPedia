@@ -22,6 +22,7 @@ class WebchatConfig
     public int $turnJobTimeoutSec;
     public int $turnRateLimitPerMin;
     public int $speakFloorTtlSec;
+    public int $conversationIdleTtlDays;
 
     public static function load(): self
     {
@@ -53,6 +54,7 @@ class WebchatConfig
         $self->turnJobTimeoutSec = (int) $cfg['turn_job_timeout_sec'];
         $self->turnRateLimitPerMin = (int) ($cfg['turn_rate_limit_per_min'] ?? 10);
         $self->speakFloorTtlSec = (int) ($cfg['speak_floor_ttl_sec'] ?? 600);
+        $self->conversationIdleTtlDays = (int) ($cfg['conversation_idle_ttl_days'] ?? 7);
         return $self;
     }
 }
