@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Services\Webchat\Jsonl\WebchatJsonlStore;
 use App\Services\Webchat\WebchatConfig;
+use App\Services\Webchat\WebchatDocsIndex;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,11 +19,15 @@ class WebchatTitleAndHousekeepTest extends TestCase
         parent::setUp();
         $this->tmpRoot = storage_path('testing/webchat_' . uniqid());
         mkdir($this->tmpRoot . '/threads', 0775, true);
+        mkdir($this->tmpRoot . '/docs', 0775, true);
+        file_put_contents($this->tmpRoot . '/docs/seed.md', "# Seed\n\ntest");
         config([
             'webchat.storage_root' => $this->tmpRoot,
+            'webchat.docs_root' => $this->tmpRoot . '/docs',
             'webchat.llm_stub' => true,
             'webchat.conversation_idle_ttl_days' => 7,
         ]);
+        (new WebchatDocsIndex(WebchatConfig::load()))->build();
     }
 
     protected function tearDown(): void
@@ -108,6 +113,18 @@ class WebchatTitleAndHousekeepTest extends TestCase
             ->assertStatus(200)
             ->assertSee('id="wmFloat"', false)
             ->assertSee('webchat-float.js', false);
+    }
+
+    public function test_full_page_webchat_matches_mockup_shell()
+    {
+        $this->get('/aipedia/webchat')
+            ->assertStatus(200)
+            ->assertSee('page-webchat', false)
+            ->assertSee('wc-shell', false)
+            ->assertSee('conversationList', false)
+            ->assertSee('wc-room-head', false)
+            ->assertSee('composer-send', false)
+            ->assertDontSee('scenario-bar--mock-only', false);
     }
 
     private function rrmdir(string $dir): void

@@ -29,15 +29,24 @@ class ProcessChatTurnJob implements ShouldQueue
     public string $userMessage;
     public array $admin;
     public string $lockToken;
+    /** When true, continue a failed turn without appending a new user_message. */
+    public bool $resume;
     public int $timeout = 300;
 
-    public function __construct(string $threadId, string $turnId, string $userMessage, array $admin, string $lockToken)
-    {
+    public function __construct(
+        string $threadId,
+        string $turnId,
+        string $userMessage,
+        array $admin,
+        string $lockToken,
+        bool $resume = false
+    ) {
         $this->threadId = $threadId;
         $this->turnId = $turnId;
         $this->userMessage = $userMessage;
         $this->admin = $admin;
         $this->lockToken = $lockToken;
+        $this->resume = $resume;
     }
 
     public function handle(): void
@@ -47,32 +56,57 @@ class ProcessChatTurnJob implements ShouldQueue
         $store = new WebchatJsonlStore($cfg);
         $lock = new WebchatThreadLock($cfg);
 
-        Log::info('webchat.turn_start', [
+        Log::info($this->resume ? 'webchat.turn_resume' : 'webchat.turn_start', [
             'thread_id' => $this->threadId,
             'turn_id' => $this->turnId,
             'phase' => $cfg->phase,
             'llm_stub' => $cfg->llmStub,
             'llm_api' => $cfg->llmApi,
             'llm_model' => $cfg->llmModel,
+            'resume' => $this->resume,
         ]);
 
         try {
-            $this->appendLine($store, $cfg, [
-                'thread_id' => $this->threadId,
-                'turn_id' => $this->turnId,
-                'type' => 'user_message',
-                'id' => 'itm_' . $this->newUlid(),
-                'text' => $this->userMessage,
-                'admin_user_id' => (int) ($this->admin['admin_user_id'] ?? 0),
-                'admin_display_name' => (string) ($this->admin['admin_display_name'] ?? 'Admin'),
-            ]);
+            if ($this->resume) {
+                $userText = $this->findTurnUserText($store);
+                if ($userText === null) {
+                    $this->appendLine($store, $cfg, [
+                        'thread_id' => $this->threadId,
+                        'turn_id' => $this->turnId,
+                        'type' => 'turn.failed',
+                        'id' => 'itm_' . $this->newUlid(),
+                        'error' => [
+                            'code' => 'not_found',
+                            'message' => 'turn missing user_message',
+                        ],
+                    ]);
+                    return;
+                }
+                $this->userMessage = $userText;
+                $this->appendLine($store, $cfg, [
+                    'thread_id' => $this->threadId,
+                    'turn_id' => $this->turnId,
+                    'type' => 'turn.resumed',
+                    'id' => 'itm_' . $this->newUlid(),
+                ]);
+            } else {
+                $this->appendLine($store, $cfg, [
+                    'thread_id' => $this->threadId,
+                    'turn_id' => $this->turnId,
+                    'type' => 'user_message',
+                    'id' => 'itm_' . $this->newUlid(),
+                    'text' => $this->userMessage,
+                    'admin_user_id' => (int) ($this->admin['admin_user_id'] ?? 0),
+                    'admin_display_name' => (string) ($this->admin['admin_display_name'] ?? 'Admin'),
+                ]);
 
-            $this->appendLine($store, $cfg, [
-                'thread_id' => $this->threadId,
-                'turn_id' => $this->turnId,
-                'type' => 'turn.started',
-                'id' => 'itm_' . $this->newUlid(),
-            ]);
+                $this->appendLine($store, $cfg, [
+                    'thread_id' => $this->threadId,
+                    'turn_id' => $this->turnId,
+                    'type' => 'turn.started',
+                    'id' => 'itm_' . $this->newUlid(),
+                ]);
+            }
 
             $prev = $store->resolveConversation($this->threadId);
             $now = microtime(true);
@@ -214,6 +248,17 @@ class ProcessChatTurnJob implements ShouldQueue
             }
 
             $resp = $llm->chat($messages, $tools);
+
+            $reasoning = trim((string) ($resp['reasoning_text'] ?? ''));
+            if ($reasoning !== '') {
+                $this->appendLine($store, $cfg, [
+                    'thread_id' => $this->threadId,
+                    'turn_id' => $this->turnId,
+                    'type' => 'reasoning',
+                    'id' => 'itm_' . $this->newUlid(),
+                    'text' => mb_substr($reasoning, 0, 12000),
+                ]);
+            }
 
             if ($resp['has_tool_calls']) {
                 if (is_array($resp['assistant_message'] ?? null)) {
@@ -370,6 +415,19 @@ class ProcessChatTurnJob implements ShouldQueue
             }
         }
         return false;
+    }
+
+    private function findTurnUserText(WebchatJsonlStore $store): ?string
+    {
+        foreach ($store->readThread($this->threadId) as $line) {
+            if (($line['turn_id'] ?? '') !== $this->turnId) {
+                continue;
+            }
+            if (($line['type'] ?? '') === 'user_message') {
+                return (string) ($line['text'] ?? '');
+            }
+        }
+        return null;
     }
 
     private function newUlid(): string

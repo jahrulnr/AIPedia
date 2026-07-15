@@ -1,0 +1,334 @@
+/* Conversation rail — reusable chat rooms mock */
+
+.wc-shell {
+    display: grid;
+    grid-template-columns: minmax(15rem, 17.5rem) minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: stretch;
+    min-height: min(68vh, 640px);
+}
+
+.wc-rail {
+    display: flex;
+    flex-direction: column;
+    border-radius: 1rem;
+    background: oklch(22% 0.025 255);
+    color: oklch(92% 0.01 255);
+    overflow: hidden;
+    box-shadow: 0 0.35rem 1rem oklch(30% 0.03 255 / 0.18);
+}
+
+.wc-rail__top {
+    padding: 0.85rem 0.85rem 0.55rem;
+}
+
+.wc-rail__new {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 0;
+    border-radius: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    font-family: var(--wm-font, "IBM Plex Sans", system-ui, sans-serif);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: oklch(99% 0 0);
+    background: linear-gradient(145deg in oklch, oklch(55% 0.14 250), oklch(48% 0.1 200));
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.wc-rail__new:hover {
+    filter: brightness(1.06);
+}
+
+.wc-rail__new:active {
+    transform: scale(0.98);
+}
+
+.wc-rail__hk {
+    margin: 0 0.85rem 0.55rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 0.5rem;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: oklch(82% 0.03 85);
+    background: oklch(28% 0.03 85);
+    border: 1px solid oklch(38% 0.04 85);
+}
+
+.wc-rail__hk i {
+    margin-right: 0.25rem;
+}
+
+.wc-rail__list {
+    list-style: none;
+    margin: 0;
+    padding: 0.25rem 0.5rem 0.85rem;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.wc-conv {
+    border: 0;
+    width: 100%;
+    text-align: left;
+    border-radius: 0.55rem;
+    padding: 0.55rem 0.6rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.35rem 0.5rem;
+    font-family: var(--wm-font, "IBM Plex Sans", system-ui, sans-serif);
+    transition: background 0.15s ease;
+}
+
+.wc-conv:hover {
+    background: oklch(30% 0.03 255);
+}
+
+.wc-conv.is-active {
+    background: oklch(36% 0.05 250);
+    box-shadow: inset 3px 0 0 oklch(65% 0.14 250);
+}
+
+.wc-conv.is-stale {
+    opacity: 0.72;
+}
+
+.wc-conv__title {
+    font-size: 0.8rem;
+    font-weight: 560;
+    line-height: 1.3;
+    color: oklch(96% 0.01 255);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wc-conv__title.is-pending {
+    font-style: italic;
+    color: oklch(78% 0.02 255);
+    font-weight: 450;
+}
+
+.wc-conv__meta {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    color: oklch(70% 0.02 255);
+}
+
+.wc-conv__by {
+    max-width: 5.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: oklch(78% 0.04 200);
+}
+
+.wc-pill {
+    font-family: var(--wm-mono, "IBM Plex Mono", monospace);
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+
+.wc-pill--auto {
+    background: oklch(40% 0.06 175);
+    color: oklch(88% 0.04 175);
+}
+
+.wc-pill--manual {
+    background: oklch(40% 0.06 250);
+    color: oklch(88% 0.04 250);
+}
+
+.wc-pill--pending {
+    background: oklch(40% 0.05 85);
+    color: oklch(88% 0.04 85);
+}
+
+.wc-pill--stale {
+    background: oklch(42% 0.1 25);
+    color: oklch(92% 0.03 25);
+}
+
+.wc-conv__del {
+    border: 0;
+    background: transparent;
+    color: oklch(70% 0.02 255);
+    padding: 0.1rem;
+    border-radius: 0.3rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.wc-conv__del:hover {
+    color: oklch(70% 0.14 25);
+    background: oklch(30% 0.04 25);
+}
+
+.wc-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.wc-main [data-webchat-mock] {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.wc-main .webchat-card {
+    flex: 1;
+    height: auto;
+    min-height: min(60vh, 560px);
+}
+
+.wc-room-head {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--wm-border, oklch(90% 0.012 255));
+    background: oklch(99% 0.003 255);
+}
+
+.wc-room-head__title {
+    font-family: var(--wm-font, "IBM Plex Sans", system-ui, sans-serif);
+    font-weight: 650;
+    font-size: 0.95rem;
+    color: var(--wm-ink, oklch(28% 0.03 255));
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wc-room-head__meta {
+    margin-left: auto;
+    font-family: var(--wm-mono, "IBM Plex Mono", monospace);
+    font-size: 0.65rem;
+    color: var(--wm-muted, oklch(55% 0.02 255));
+}
+
+.wc-room-head__edit {
+    border: 1px solid var(--wm-border, oklch(90% 0.012 255));
+    background: transparent;
+    border-radius: 0.45rem;
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
+    color: var(--wm-muted, oklch(55% 0.02 255));
+    cursor: pointer;
+}
+
+.wc-room-head__edit:hover {
+    color: var(--wm-accent, oklch(52% 0.16 250));
+    border-color: color-mix(in oklab, var(--wm-accent, oklch(52% 0.16 250)) 40%, white);
+}
+
+@media (max-width: 900px) {
+    .wc-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .wc-rail {
+        max-height: 14rem;
+    }
+}
+
+/* Full-page webchat: lock viewport to main-content; scroll only rail list + messages */
+body.page-webchat {
+    overflow: hidden;
+    height: 100vh;
+}
+
+body.page-webchat .main-content {
+    height: calc(100vh - var(--topbar-height));
+    max-height: calc(100vh - var(--topbar-height));
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+body.page-webchat .main-content > .page-title {
+    flex-shrink: 0;
+    margin-bottom: 0.75rem !important;
+}
+
+body.page-webchat .wc-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+}
+
+body.page-webchat .wc-rail,
+body.page-webchat .wc-main {
+    min-height: 0;
+    height: 100%;
+}
+
+body.page-webchat .wc-main [data-webchat-mock] {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+body.page-webchat .wc-main .scenario-bar {
+    flex-shrink: 0;
+}
+
+body.page-webchat .wc-main .webchat-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+}
+
+body.page-webchat .wc-rail__list,
+body.page-webchat .webchat-messages {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+@media (max-width: 900px) {
+    body.page-webchat .wc-shell {
+        grid-template-rows: minmax(10rem, 30%) minmax(0, 1fr);
+    }
+
+    body.page-webchat .wc-rail {
+        max-height: none;
+        min-height: 0;
+    }
+}
+
+
+/* Laravel shell extras */
+body.page-webchat .footer { display: none; }
+body.page-webchat .wc-main > .webchat-root,
+body.page-webchat .wc-main .webchat-root {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}

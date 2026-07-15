@@ -207,13 +207,8 @@
     font-size: 0.68rem;
 }
 
-.wm-float .webchat-composer,
-.wm-float .webchat-input-area {
+.wm-float .webchat-composer {
     padding: 0.65rem 0.75rem 0.8rem;
-}
-
-.wm-float .webchat-input-area .form-control {
-    font-size: 0.85rem;
 }
 
 .wm-float .composer-hints {

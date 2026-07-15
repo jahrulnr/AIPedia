@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     @stack('styles')
 </head>
-<body>
+<body class="@yield('body-class')">
 
 <!-- Topbar -->
 <header class="topbar">

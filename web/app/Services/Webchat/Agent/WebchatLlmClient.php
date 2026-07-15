@@ -24,6 +24,7 @@ class WebchatLlmClient
      *   has_tool_calls: bool,
      *   tool_calls: list<array{id:string,name:string,arguments:array}>,
      *   assistant_text: string,
+     *   reasoning_text: string,
      *   assistant_message: array<string, mixed>|null,
      *   usage: array<string, int>
      * }
@@ -74,6 +75,7 @@ class WebchatLlmClient
             'has_tool_calls' => $hasToolCalls,
             'tool_calls' => $toolCalls,
             'assistant_text' => is_string($choice['content'] ?? null) ? $choice['content'] : '',
+            'reasoning_text' => $this->extractReasoningFromChatMessage(is_array($choice) ? $choice : []),
             'assistant_message' => $choice,
             'usage' => $this->mapUsage($usage),
         ];
@@ -136,9 +138,82 @@ class WebchatLlmClient
             'has_tool_calls' => $hasToolCalls,
             'tool_calls' => $toolCalls,
             'assistant_text' => $assistantText,
+            'reasoning_text' => $this->extractReasoningFromResponsesOutput($output),
             'assistant_message' => $assistantMessage,
             'usage' => $this->mapUsage($payload['usage'] ?? []),
         ];
+    }
+
+    /**
+     * Pull provider reasoning/thinking text from Responses API output items.
+     *
+     * @param  list<array<string, mixed>>  $output
+     */
+    public function extractReasoningFromResponsesOutput(array $output): string
+    {
+        $parts = [];
+        foreach ($output as $item) {
+            if (($item['type'] ?? '') !== 'reasoning') {
+                continue;
+            }
+            foreach ($item['summary'] ?? [] as $block) {
+                if (!is_array($block)) {
+                    continue;
+                }
+                $text = trim((string) ($block['text'] ?? ''));
+                if ($text !== '') {
+                    $parts[] = $text;
+                }
+            }
+            foreach ($item['content'] ?? [] as $block) {
+                if (!is_array($block)) {
+                    continue;
+                }
+                $type = (string) ($block['type'] ?? '');
+                if (!in_array($type, ['reasoning_text', 'summary_text', 'output_text', 'text'], true)) {
+                    continue;
+                }
+                $text = trim((string) ($block['text'] ?? ''));
+                if ($text !== '') {
+                    $parts[] = $text;
+                }
+            }
+            if (is_string($item['text'] ?? null) && trim($item['text']) !== '') {
+                $parts[] = trim($item['text']);
+            }
+        }
+
+        return trim(implode("\n\n", $parts));
+    }
+
+    /**
+     * Pull reasoning from chat-completions assistant message variants.
+     *
+     * @param  array<string, mixed>  $choice
+     */
+    public function extractReasoningFromChatMessage(array $choice): string
+    {
+        foreach (['reasoning_content', 'reasoning', 'thinking'] as $key) {
+            $val = $choice[$key] ?? null;
+            if (is_string($val) && trim($val) !== '') {
+                return trim($val);
+            }
+            if (is_array($val)) {
+                $chunks = [];
+                foreach ($val as $part) {
+                    if (is_string($part) && trim($part) !== '') {
+                        $chunks[] = trim($part);
+                    } elseif (is_array($part) && is_string($part['text'] ?? null) && trim($part['text']) !== '') {
+                        $chunks[] = trim($part['text']);
+                    }
+                }
+                if ($chunks !== []) {
+                    return implode("\n\n", $chunks);
+                }
+            }
+        }
+
+        return '';
     }
 
     /**

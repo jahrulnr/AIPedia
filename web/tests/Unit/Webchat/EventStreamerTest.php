@@ -71,6 +71,24 @@ class EventStreamerTest extends TestCase
         $this->assertSame('user_message', $event['data']['item']['type']);
     }
 
+    public function test_map_line_emits_reasoning_as_item_completed()
+    {
+        $cfg = WebchatConfig::load();
+        $store = new WebchatJsonlStore($cfg);
+        $streamer = new WebchatEventStreamer($cfg, $store);
+
+        $event = $streamer->mapLine([
+            'seq' => 3,
+            'type' => 'reasoning',
+            'thread_id' => 'thr_test',
+            'turn_id' => 'trn_1',
+            'text' => 'Saya perlu mencari dokumen.',
+        ]);
+
+        $this->assertSame('item.completed', $event['event']);
+        $this->assertSame('reasoning', $event['data']['item']['type']);
+    }
+
     private function rrmdir(string $dir): void
     {
         if (!is_dir($dir)) {

@@ -13,10 +13,20 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 
 ### Added
 
+- Retry failed turn: `POST /aipedia/webchat/threads/{id}/retry` — same `turn_id`, SSE `turn.resumed`, keeps prior tool/reasoning history (no new user message). FE Retry on Failed (not for `interrupted`).
 - AI auto-title after first completed turn (`ProcessThreadTitleJob` / stub truncate).
 - Manual rename: `PATCH /aipedia/webchat/threads/{id}` (`title_source=manual` locks auto).
 - Housekeep idle conversations: `webchat:housekeep-conversations` (scheduler daily 03:15, TTL 7d).
 - Dashboard floating launcher: last + New + full-page link (`partials/float`).
+
+### Added
+
+- Docs search index: `WebchatDocsIndex` → `storage/.../docs_index.json`; `ReindexWebchatDocsJob` queued once from `infra/start.sh`; AI locked (HTTP 503) until ready via `webchat:reindex-docs` (no post-boot reindex/schedule). `search_docs` reads the index (`--sync` for ops/tests).
+
+### Changed
+
+- Full-page webchat UI aligned to mockup: conversation rail, room head/rename, IBM Plex, composer/Stop, `.msg` bubbles (no mock scenario chips).
+- Agent bubbles: lightweight markdown render; Thinking + Tool Calls disclosures (mockup-like); persist/stream `reasoning` JSONL from provider.
 
 ---
 

@@ -65,13 +65,16 @@ class WebchatEventStreamer
         if (in_array($type, ['turn.failed', 'turn_failed'], true)) {
             return ['event' => 'turn.failed', 'data' => $line];
         }
+        if (in_array($type, ['turn.resumed', 'turn_resumed'], true)) {
+            return ['event' => 'turn.resumed', 'data' => $line];
+        }
         if (in_array($type, ['thread.started', 'thread_started'], true)) {
             return ['event' => 'thread.started', 'data' => $line];
         }
         if ($type === 'agent_message_delta') {
             return ['event' => 'item.updated', 'data' => $this->wrapItem($line)];
         }
-        if (in_array($type, ['user_message', 'agent_message', 'tool_call', 'tool_result'], true)) {
+        if (in_array($type, ['user_message', 'agent_message', 'tool_call', 'tool_result', 'reasoning'], true)) {
             return ['event' => 'item.completed', 'data' => $this->wrapItem($line)];
         }
 

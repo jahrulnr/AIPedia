@@ -110,4 +110,40 @@ class LlmClientTest extends TestCase
         $this->assertFalse($tools[0]['function']['strict']);
         $this->assertSame(['query', 'domain'], $tools[0]['function']['parameters']['required']);
     }
+
+    public function test_extract_reasoning_from_responses_output()
+    {
+        config(['webchat.llm_api' => 'responses']);
+        $client = new WebchatLlmClient(WebchatConfig::load());
+
+        $text = $client->extractReasoningFromResponsesOutput([
+            [
+                'type' => 'reasoning',
+                'summary' => [
+                    ['type' => 'summary_text', 'text' => 'Cek docs dengan search_docs.'],
+                ],
+            ],
+            [
+                'type' => 'function_call',
+                'name' => 'search_docs',
+                'arguments' => '{"query":"dokumen"}',
+            ],
+        ]);
+
+        $this->assertSame('Cek docs dengan search_docs.', $text);
+    }
+
+    public function test_extract_reasoning_from_chat_message()
+    {
+        config(['webchat.llm_api' => 'chat']);
+        $client = new WebchatLlmClient(WebchatConfig::load());
+
+        $text = $client->extractReasoningFromChatMessage([
+            'role' => 'assistant',
+            'content' => 'Jawaban akhir',
+            'reasoning_content' => 'Pikirkan query dulu.',
+        ]);
+
+        $this->assertSame('Pikirkan query dulu.', $text);
+    }
 }

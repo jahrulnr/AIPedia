@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Services\Webchat\Jsonl\WebchatJsonlStore;
 use App\Services\Webchat\WebchatConfig;
+use App\Services\Webchat\WebchatDocsIndex;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,11 +19,15 @@ class WebchatFloorTest extends TestCase
         parent::setUp();
         $this->tmpRoot = storage_path('testing/webchat_' . uniqid());
         mkdir($this->tmpRoot . '/threads', 0775, true);
+        mkdir($this->tmpRoot . '/docs', 0775, true);
+        file_put_contents($this->tmpRoot . '/docs/seed.md', "# Seed\n\ntest");
         config([
             'webchat.storage_root' => $this->tmpRoot,
+            'webchat.docs_root' => $this->tmpRoot . '/docs',
             'webchat.speak_floor_ttl_sec' => 600,
             'webchat.llm_stub' => true,
         ]);
+        (new WebchatDocsIndex(WebchatConfig::load()))->build();
     }
 
     protected function tearDown(): void

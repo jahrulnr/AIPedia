@@ -29,6 +29,7 @@ Route::prefix('aipedia/webchat')->name('aipedia.webchat.')->group(function () {
     Route::get('/threads/{threadId}', [AipediaWebchatController::class, 'getThread'])->name('threads.get');
     Route::patch('/threads/{threadId}', [AipediaWebchatController::class, 'rename'])->name('threads.rename');
     Route::post('/threads/{threadId}/turns', [AipediaWebchatController::class, 'startTurn'])->name('threads.turns');
+    Route::post('/threads/{threadId}/retry', [AipediaWebchatController::class, 'retry'])->name('threads.retry');
     Route::get('/threads/{threadId}/events', [AipediaWebchatController::class, 'events'])->name('threads.events');
     Route::post('/threads/{threadId}/interrupt', [AipediaWebchatController::class, 'interrupt'])->name('threads.interrupt');
 });

@@ -53,7 +53,8 @@ Update a row when you land a PR/commit. Add a short `CHANGELOG.md` entry under `
 | POST create | `POST …/threads` | `done` |
 | GET hydrate | `GET …/threads/{id}` (+ floor fields) | `done` |
 | POST turn | `POST …/turns` | `done` |
-| GET SSE | `GET …/events` | `done` |
+| POST retry | `POST …/retry` (`RetryTurn` / `ResumeChatTurn`) | `done` | same `turn_id`; no new `user_message`; keeps tool history |
+| GET SSE | `GET …/events` (+ `turn.resumed`) | `done` |
 | POST interrupt | `POST …/interrupt` (initiator) | `done` |
 | PATCH rename | `PATCH …/threads/{id}` | `done` |
 
@@ -68,8 +69,10 @@ Update a row when you land a PR/commit. Add a short `CHANGELOG.md` entry under `
 | Send ↔ Stop | `done` |
 | Floor banner | `done` |
 | Handle 423 / 429 / 409 | `done` |
+| Retry on non-interrupted `turn.failed` | `done` | FE button → resume mid-tool; not restart chat |
 | Attribution | `done` |
 | Dashboard float | `done` |
+| Full-page shell (rail + room head + composer) | `done` | matches mockup minus scenario chips |
 | Mock scenario chips | `n/a` |
 
 ---
@@ -81,9 +84,10 @@ Update a row when you land a PR/commit. Add a short `CHANGELOG.md` entry under `
 | `ScheduleThreadTitleIfNeeded` after `turn.completed` | `done` |
 | `ProcessThreadTitleJob` (stub/LLM) | `done` |
 | `webchat:housekeep-conversations` daily 03:15 | `done` |
+| Docs reindex queue once on Docker boot | `done` | `webchat:reindex-docs` in `infra/start.sh`; no watch/schedule |
 
 ## Deferred
 
 _(none for locked M-rw product surface)_
 
-Last reviewed: 2026-07-15 (title + HK + float).
+Last reviewed: 2026-07-15 (RetryTurn / ResumeChatTurn).

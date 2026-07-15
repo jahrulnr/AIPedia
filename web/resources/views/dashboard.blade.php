@@ -5,7 +5,7 @@
 @section('nav-dashboard', 'active')
 
 @push('scripts')
-    @include('aipedia.webchat.partials.float', ['adminUserId' => 1])
+    @include('aipedia.webchat.partials.float', ['adminUserId' => 1, 'adminDisplayName' => 'Admin User'])
 @endpush
 
 @section('content')
