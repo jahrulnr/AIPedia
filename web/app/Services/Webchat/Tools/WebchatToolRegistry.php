@@ -11,6 +11,7 @@ class WebchatToolRegistry
     private WebchatAllowlist $allowlist;
     private SearchDocsTool $searchDocs;
     private WebchatDocsFilesystem $docsFilesystem;
+    private WebchatToolArgumentHealer $argumentHealer;
 
     public function __construct(WebchatConfig $cfg, WebchatAllowlist $allowlist, SearchDocsTool $searchDocs)
     {
@@ -18,6 +19,7 @@ class WebchatToolRegistry
         $this->allowlist = $allowlist;
         $this->searchDocs = $searchDocs;
         $this->docsFilesystem = new WebchatDocsFilesystem($cfg);
+        $this->argumentHealer = new WebchatToolArgumentHealer();
     }
 
     public function execute(string $name, array $args, array $admin = []): array
@@ -32,6 +34,8 @@ class WebchatToolRegistry
         if (in_array($name, ['draft_mutation', 'confirm_mutation'], true) && $this->cfg->writeEnabled === false) {
             return $this->fail('write_disabled', 'Writes are disabled', $name, $started);
         }
+
+        $args = $this->argumentHealer->heal($args, $this->parametersFor($name));
 
         if ($name === 'search_docs') {
             $env = $this->searchDocs->execute($args);
@@ -91,6 +95,17 @@ class WebchatToolRegistry
                 'parameters' => $schema['parameters'] ?? ['type' => 'object', 'properties' => []],
             ],
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function parametersFor(string $name): array
+    {
+        $path = $this->cfg->toolsRoot . '/' . $name . '.tool.json';
+        if (!file_exists($path)) {
+            return [];
+        }
+        $schema = json_decode((string) file_get_contents($path), true);
+        return is_array($schema['parameters'] ?? null) ? $schema['parameters'] : [];
     }
 
     private function fail(string $code, string $message, string $name, float $started): array

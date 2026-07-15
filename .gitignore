@@ -43,6 +43,7 @@ web/storage/pail/
 # IDE / OS
 .idea/
 .vscode/
+.serena/
 *.swp
 .DS_Store
 

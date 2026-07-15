@@ -716,9 +716,13 @@
         const lines = items || [];
         // Suppress Failed UI when the same turn later completed (after Retry).
         const completedTurns = {};
+        const latestFailedSeq = {};
         lines.forEach(function (line) {
             if ((line.type || '') === 'turn.completed' && line.turn_id) {
                 completedTurns[line.turn_id] = true;
+            }
+            if ((line.type || '') === 'turn.failed' && line.turn_id) {
+                latestFailedSeq[line.turn_id] = Number(line.seq || 0);
             }
         });
         lines.forEach(function (line) {
@@ -727,6 +731,12 @@
                 return;
             }
             if (type === 'turn.failed' && line.turn_id && completedTurns[line.turn_id]) {
+                return;
+            }
+            // A retry can append another failure for the same turn. Keep only
+            // the latest terminal error so refresh remains a faithful snapshot.
+            if (type === 'turn.failed' && line.turn_id
+                && Number(line.seq || 0) !== latestFailedSeq[line.turn_id]) {
                 return;
             }
             renderItem(line);

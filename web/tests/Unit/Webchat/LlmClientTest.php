@@ -43,7 +43,7 @@ class LlmClientTest extends TestCase
         $this->assertSame(['query', 'domain', 'top_k'], $normalized['required']);
         $this->assertSame('string', $normalized['properties']['query']['type']);
         $this->assertSame(['string', 'null'], $normalized['properties']['domain']['type']);
-        $this->assertSame(['integer', 'null'], $normalized['properties']['top_k']['type']);
+        $this->assertSame(['integer', 'string', 'null'], $normalized['properties']['top_k']['type']);
     }
 
     public function test_to_responses_request_maps_chat_history_and_tools()

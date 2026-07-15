@@ -31,6 +31,8 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 
 ### Changed
 
+- Added tool-argument healing for low/medium models: optional numeric and boolean parameters accept string representations at provider validation, then normalize to native types before tool execution.
+- Webchat hydrate now collapses repeated failures from the same retried turn after refresh; HTTP 413 is always eligible for provider failover, and `.env.example` documents provider routing settings.
 - Full-page webchat UI aligned to mockup: conversation rail, room head/rename, IBM Plex, composer/Stop, `.msg` bubbles (no mock scenario chips).
 - Replaced native browser rename prompt and title tooltips with an accessible branded dialog, inline validation, focus management, custom tooltips, polished status/toast feedback, and reduced-motion support.
 - Agent bubbles: sanitized GFM rendering through Marked and DOMPurify, including tables, lists, blockquotes, and fenced code; Thinking + Tool Calls disclosures (mockup-like); persist/stream `reasoning` JSONL from provider.

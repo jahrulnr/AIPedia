@@ -380,9 +380,9 @@ class WebchatLlmClient
             if (!in_array($key, $required, true)) {
                 $type = $schema['type'] ?? null;
                 if (is_string($type)) {
-                    $schema['type'] = [$type, 'null'];
+                    $schema['type'] = $this->tolerantOptionalTypes($type);
                 } elseif (is_array($type) && !in_array('null', $type, true)) {
-                    $schema['type'] = array_values(array_merge($type, ['null']));
+                    $schema['type'] = $this->tolerantOptionalTypes($type);
                 }
             }
             $normalizedProps[$key] = $schema;
@@ -394,6 +394,17 @@ class WebchatLlmClient
         $parameters['type'] = $parameters['type'] ?? 'object';
 
         return $parameters;
+    }
+
+    /** @return list<string> */
+    private function tolerantOptionalTypes(string|array $types): array
+    {
+        $types = is_array($types) ? $types : [$types];
+        if (array_intersect($types, ['integer', 'number', 'boolean']) !== []) {
+            $types[] = 'string';
+        }
+        $types[] = 'null';
+        return array_values(array_unique($types));
     }
 
     /**
@@ -425,7 +436,10 @@ class WebchatLlmClient
             $status = $e->getResponse() ? $e->getResponse()->getStatusCode() : 0;
             $respBody = $e->getResponse() ? (string) $e->getResponse()->getBody() : '';
             $snippet = mb_substr(trim($respBody), 0, 800);
-            $transient = $status === 0 || in_array($status, $this->cfg->llmRetryStatuses, true);
+            // Providers use 413 for an oversized/token-limited request. It is
+            // safe to try the next configured provider even when an older env
+            // value omitted 413 from WEBCHAT_LLM_RETRY_STATUSES.
+            $transient = $this->isTransientStatus($status);
 
             Log::warning('webchat.llm_http_error', [
                 'api' => $this->provider['api'] ?? $this->cfg->llmApi,
@@ -453,6 +467,13 @@ class WebchatLlmClient
         }
 
         return $payload;
+    }
+
+    protected function isTransientStatus(int $status): bool
+    {
+        return $status === 0
+            || $status === 413
+            || in_array($status, $this->cfg->llmRetryStatuses, true);
     }
 
     /**
