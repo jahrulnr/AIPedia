@@ -1,0 +1,16 @@
+{
+  "type": "function",
+  "name": "list_vouchers",
+  "description": "List vouchers with optional filter.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "description": "Optional status filter"
+      }
+    },
+    "additionalProperties": false
+  },
+  "strict": true
+}

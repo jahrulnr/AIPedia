@@ -1,0 +1,11 @@
+{
+  "type": "function",
+  "name": "list_modules",
+  "description": "List admin modules that are available in the CMS.",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "strict": true
+}

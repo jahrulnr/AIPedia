@@ -1,0 +1,17 @@
+{
+  "type": "function",
+  "name": "search_admin_routes",
+  "description": "Search admin routes by keyword.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Keyword to search routes"
+      }
+    },
+    "required": ["query"],
+    "additionalProperties": false
+  },
+  "strict": true
+}

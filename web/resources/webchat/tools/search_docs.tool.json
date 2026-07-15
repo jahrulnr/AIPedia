@@ -1,0 +1,27 @@
+{
+  "type": "function",
+  "name": "search_docs",
+  "description": "Search tutorials/SOPs shipped as Markdown files in the app repo (docs/webchat), not CMS database content. Returns short chunks with path citations. Use for how-to and field meaning questions. Do not use for live entity status — use get/list tools instead.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Natural language question or keywords"
+      },
+      "domain": {
+        "type": "string",
+        "description": "Optional domain filter, e.g. voucher, package, config"
+      },
+      "top_k": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10,
+        "description": "Number of chunks. Default from host docs_top_k."
+      }
+    },
+    "required": ["query"],
+    "additionalProperties": false
+  },
+  "strict": true
+}

@@ -1,0 +1,17 @@
+{
+  "type": "function",
+  "name": "get_voucher",
+  "description": "Get voucher details by ID or code.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Voucher ID"
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "strict": true
+}

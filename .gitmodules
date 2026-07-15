@@ -1,0 +1,3 @@
+[submodule "web/docs/webchat"]
+	path = web/docs/webchat
+	url = https://github.com/jahrulnr/dev-docs.git

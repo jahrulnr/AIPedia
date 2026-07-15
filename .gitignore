@@ -1,0 +1,54 @@
+# Secrets / local env
+.env
+.env.*
+!.env.example
+web/.env
+web/.env.*
+!web/.env.example
+web/.env.backup
+
+# Dependencies / build
+web/vendor/
+web/node_modules/
+web/public/hot
+web/public/storage
+
+# Runtime junk
+web/composer.phar
+web/*.pid
+web/supervisord.pid
+web/.phpunit.result.cache
+npm-debug.log
+yarn-error.log
+
+# Laravel storage (keep placeholder ignores / gitkeeps only)
+web/storage/*.key
+web/storage/app/*
+!web/storage/app/.gitignore
+!web/storage/app/.gitkeep
+!web/storage/app/public/
+web/storage/app/public/*
+!web/storage/app/public/.gitignore
+!web/storage/app/public/.gitkeep
+web/storage/framework/*
+!web/storage/framework/.gitignore
+!web/storage/framework/.gitkeep
+web/storage/logs/*
+!web/storage/logs/.gitignore
+!web/storage/logs/.gitkeep
+web/storage/debugbar/
+web/storage/testing/
+web/storage/pail/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Docker local overrides
+docker-compose.override.yml
+compose.override.yml
+
+# Local leftover when submodule replaced placeholder docs
+web/docs/webchat._local_seed/
