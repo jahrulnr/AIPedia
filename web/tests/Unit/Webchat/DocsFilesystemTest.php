@@ -52,6 +52,25 @@ class DocsFilesystemTest extends TestCase
         $tool->readFile(['path' => '../../.env']);
     }
 
+    public function test_read_file_and_list_dir_support_explicit_pagination(): void
+    {
+        file_put_contents($this->root . '/nested/second.md', "# Second\n\nmore content");
+        $tool = new WebchatDocsFilesystem(WebchatConfig::load());
+
+        $page = $tool->listDir(['path' => 'nested', 'max_entries' => 1]);
+        $this->assertTrue($page['data']['has_more']);
+        $this->assertSame(1, $page['data']['next_offset']);
+
+        $next = $tool->listDir(['path' => 'nested', 'max_entries' => 1, 'offset' => 1]);
+        $this->assertFalse($next['data']['has_more']);
+        $this->assertNotSame($page['data']['entries'][0]['name'], $next['data']['entries'][0]['name']);
+
+        $read = $tool->readFile(['path' => 'nested/guide.md', 'max_chars' => 8]);
+        $this->assertTrue($read['data']['has_more']);
+        $tail = $tool->readFile(['path' => 'nested/guide.md', 'max_chars' => 100, 'offset' => $read['data']['next_offset']]);
+        $this->assertStringContainsString('searchable content', $tail['data']['content']);
+    }
+
     private function remove(string $dir): void
     {
         if (!is_dir($dir)) {

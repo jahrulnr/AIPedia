@@ -32,7 +32,10 @@ class SearchDocsTest extends TestCase
         config([
             'webchat.docs_root' => $this->tmpRoot,
             'webchat.storage_root' => $this->tmpStorage,
+            'webchat.docs_app_id' => 'aipedia-test',
             'webchat.docs_top_k' => 5,
+            'webchat.docs_min_score' => 0.5,
+            'webchat.docs_fuzzy_enabled' => true,
         ]);
 
         (new WebchatDocsIndex(WebchatConfig::load()))->build();
@@ -70,6 +73,30 @@ class SearchDocsTest extends TestCase
 
         $this->assertTrue($result['ok']);
         $this->assertSame([], $result['data']['chunks']);
+    }
+
+    public function test_search_docs_does_not_return_generic_single_keyword_matches_for_a_question(): void
+    {
+        $result = (new SearchDocsTool(WebchatConfig::load()))->execute([
+            'query' => 'cara membuat akun admin baru',
+        ]);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame([], $result['data']['chunks']);
+    }
+
+    public function test_search_docs_handles_a_small_typo_and_returns_chunk_metadata(): void
+    {
+        $result = (new SearchDocsTool(WebchatConfig::load()))->execute([
+            'query' => 'vaucher',
+        ]);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('sample/voucher.md', $result['data']['chunks'][0]['path']);
+        $this->assertSame('sample', $result['data']['chunks'][0]['domain']);
+        $this->assertSame('unknown', $result['data']['chunks'][0]['language']);
+        $this->assertSame('aipedia-test', $result['data']['chunks'][0]['app_id']);
+        $this->assertNotEmpty($result['data']['chunks'][0]['chunk_id']);
     }
 
     public function test_search_docs_fails_without_query()

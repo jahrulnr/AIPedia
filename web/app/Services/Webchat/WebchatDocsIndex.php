@@ -153,6 +153,7 @@ class WebchatDocsIndex
         $payload = [
             'built_at' => microtime(true),
             'docs_root' => $docsRoot,
+            'app_id' => $this->cfg->docsAppId,
             'document_count' => count($documents),
             'documents' => $documents,
         ];
@@ -193,16 +194,16 @@ class WebchatDocsIndex
     /**
      * Search indexed documents (or empty if index not usable).
      *
-     * @return list<array{path:string,title:string,excerpt:string,score:float}>
+     * @return list<array{path:string,title:string,excerpt:string,score:float,language?:string,domain?:string,heading?:string,chunk_id?:string}>
      */
-    public function search(string $query, int $topK): array
+    public function search(string $query, int $topK, array $filters = []): array
     {
         $index = $this->load();
         if ($index === null) {
             return [];
         }
 
-        return $this->rankDocuments($index['documents'], $query, $topK);
+        return $this->rankDocuments($index['documents'], $query, $topK, $filters);
     }
 
     private function ensureStorageDir(): void
@@ -264,6 +265,10 @@ class WebchatDocsIndex
                 'title' => $this->firstHeading($text, $rel),
                 'headings' => $this->extractHeadings($text),
                 'text' => $text,
+                'language' => $this->languageFromPath($rel),
+                'domain' => $this->domainFromPath($rel),
+                'app_id' => $this->cfg->docsAppId,
+                'chunks' => $this->chunkMarkdown($text),
                 'mtime' => (int) $file->getMTime(),
             ];
         }
@@ -277,25 +282,44 @@ class WebchatDocsIndex
      * @param  list<array<string,mixed>>  $documents
      * @return list<array{path:string,title:string,excerpt:string,score:float}>
      */
-    public function rankDocuments(array $documents, string $query, int $topK): array
+    public function rankDocuments(array $documents, string $query, int $topK, array $filters = []): array
     {
         $hits = [];
         foreach ($documents as $doc) {
             $path = (string) ($doc['path'] ?? '');
-            $text = (string) ($doc['text'] ?? '');
-            $score = $this->keywordScore($query, $path, $text, $doc['headings'] ?? null);
-            if ($score <= 0) {
+            if (($filters['language'] ?? '') !== ''
+                && (string) ($doc['language'] ?? '') !== (string) $filters['language']) {
                 continue;
             }
-            $hits[] = [
-                'path' => $path,
-                'title' => (string) ($doc['title'] ?? basename($path, '.md')),
-                'excerpt' => $this->snippet($text, $query, 500),
-                'score' => $score,
-            ];
+            if (($filters['domain'] ?? '') !== ''
+                && (string) ($doc['domain'] ?? '') !== (string) $filters['domain']) {
+                continue;
+            }
+            $chunks = is_array($doc['chunks'] ?? null) && $doc['chunks'] !== []
+                ? $doc['chunks']
+                : [['id' => 'doc', 'heading' => $doc['title'] ?? '', 'text' => (string) ($doc['text'] ?? '')]];
+            foreach ($chunks as $chunk) {
+                $text = (string) ($chunk['text'] ?? '');
+                $heading = (string) ($chunk['heading'] ?? '');
+                $score = $this->keywordScore($query, $path, $text, [$heading]);
+                if ($score < (float) config('webchat.docs_min_score', 1.5)) {
+                    continue;
+                }
+                $hits[] = [
+                    'path' => $path,
+                    'title' => (string) ($doc['title'] ?? basename($path, '.md')),
+                    'heading' => $heading,
+                    'chunk_id' => (string) ($chunk['id'] ?? 'doc'),
+                    'language' => (string) ($doc['language'] ?? 'unknown'),
+                    'domain' => (string) ($doc['domain'] ?? ''),
+                    'app_id' => (string) ($doc['app_id'] ?? $this->cfg->docsAppId),
+                    'excerpt' => $this->snippet($text, $query, 500),
+                    'score' => $score,
+                ];
+            }
         }
 
-        usort($hits, static fn ($a, $b) => $b['score'] <=> $a['score']);
+        usort($hits, static fn ($a, $b) => ($b['score'] <=> $a['score']) ?: strcmp($a['path'], $b['path']));
         return array_slice($hits, 0, max(1, $topK));
     }
 
@@ -304,17 +328,44 @@ class WebchatDocsIndex
      */
     public function keywordScore(string $query, string $path, string $text, ?array $headings = null): float
     {
-        $q = mb_strtolower($query);
-        $words = preg_split('/\s+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $q = mb_strtolower(trim($query));
+        $words = $this->meaningfulQueryWords($q);
+        if ($words === []) {
+            return 0.0;
+        }
         $textLower = mb_strtolower($text);
         $pathLower = mb_strtolower($path);
 
         $score = 0.0;
+        $matched = 0;
         foreach ($words as $word) {
-            $score += substr_count($textLower, $word) * 1.0;
-            if (str_contains($pathLower, $word)) {
+            $inText = substr_count($textLower, $word);
+            $inPath = str_contains($pathLower, $word);
+            if ($inText === 0 && !$inPath && (bool) config('webchat.docs_fuzzy_enabled', true)) {
+                $fuzzy = $this->closestToken($word, $textLower . ' ' . $pathLower);
+                if ($fuzzy !== null) {
+                    $matched++;
+                    $score += 0.75;
+                }
+            }
+            if ($inText > 0 || $inPath) {
+                $matched++;
+            }
+            $score += $inText * 1.0;
+            if ($inPath) {
                 $score += 5.0;
             }
+        }
+
+        // A multi-word question must match at least two meaningful terms.
+        // This prevents a generic word such as "admin" from returning an
+        // unrelated document that happens to mention it once.
+        if ($matched < min(2, count($words))) {
+            return 0.0;
+        }
+
+        if (str_contains($textLower, $q)) {
+            $score += 12.0;
         }
 
         $headingList = $headings ?? $this->extractHeadings($text);
@@ -328,6 +379,86 @@ class WebchatDocsIndex
         }
 
         return $score;
+    }
+
+    /** @return list<string> */
+    private function meaningfulQueryWords(string $query): array
+    {
+        $stopWords = [
+            'a', 'an', 'and', 'are', 'buat', 'cara', 'di', 'do', 'for', 'how',
+            'in', 'ke', 'of', 'on', 'the', 'to', 'untuk', 'use', 'yang',
+        ];
+        $words = preg_split('/[^\p{L}\p{N}]+/u', $query, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $words = array_map(static fn (string $word): string => mb_strtolower($word), $words);
+        $words = array_filter($words, static fn (string $word): bool => mb_strlen($word) >= 3 && !in_array($word, $stopWords, true));
+        return array_values(array_unique($words));
+    }
+
+    private function closestToken(string $needle, string $haystack): ?string
+    {
+        $tokens = preg_split('/[^\p{L}\p{N}]+/u', $haystack, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $maxDistance = mb_strlen($needle) >= 7 ? 2 : 1;
+        $best = null;
+        $bestDistance = $maxDistance + 1;
+        foreach (array_unique($tokens) as $token) {
+            $token = mb_strtolower($token);
+            if (abs(mb_strlen($token) - mb_strlen($needle)) > $maxDistance) {
+                continue;
+            }
+            $distance = levenshtein($needle, $token);
+            if ($distance <= $maxDistance && $distance < $bestDistance) {
+                $best = $token;
+                $bestDistance = $distance;
+            }
+        }
+        return $best;
+    }
+
+    /** @return list<array{id:string,heading:string,text:string}> */
+    private function chunkMarkdown(string $text): array
+    {
+        $lines = preg_split('/\R/u', $text) ?: [];
+        $chunks = [];
+        $heading = '';
+        $body = [];
+        $flush = function () use (&$chunks, &$heading, &$body): void {
+            $content = trim(implode("\n", $body));
+            if ($content !== '') {
+                $chunks[] = [
+                    'id' => 'chunk_' . count($chunks),
+                    'heading' => $heading,
+                    'text' => $content,
+                ];
+            }
+            $body = [];
+        };
+        foreach ($lines as $line) {
+            if (preg_match('/^#{1,3}\s+(.+)$/u', $line, $matches) === 1) {
+                $flush();
+                $heading = trim($matches[1]);
+                continue;
+            }
+            $body[] = $line;
+        }
+        $flush();
+        return $chunks === [] ? [['id' => 'chunk_0', 'heading' => '', 'text' => trim($text)]] : $chunks;
+    }
+
+    private function languageFromPath(string $path): string
+    {
+        if (preg_match('/(?:^|\/)[^\/]+_id\.md$/i', $path) === 1 || str_ends_with(strtolower($path), '_id.md')) {
+            return 'id';
+        }
+        if (preg_match('/(?:^|\/)[^\/]+_en\.md$/i', $path) === 1 || str_ends_with(strtolower($path), '_en.md')) {
+            return 'en';
+        }
+        return 'unknown';
+    }
+
+    private function domainFromPath(string $path): string
+    {
+        $parts = explode('/', trim($path, '/'));
+        return count($parts) > 1 ? (string) $parts[0] : 'general';
     }
 
     /** @return list<string> */

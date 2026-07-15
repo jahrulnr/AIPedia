@@ -32,6 +32,9 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 
 ### Changed
 
+- Hardened documentation retrieval with heading-aware chunks, language/domain/app metadata, typo-tolerant lexical scoring, relevance thresholds, and explicit pagination for directory/file tools; generic keyword matches no longer qualify as evidence.
+- Enforced search-first behavior in the system/developer prompts for informational, operational, policy, workflow, and how-to questions, while keeping tool-call decisions with the model; removed host-level preflight orchestration that made internal calls appear as model actions.
+- Clarified tool-call model rendering so missing metadata cannot create an empty line, and aligned the canonical webchat contract prompts/tool schema with the retrieval safeguards.
 - Added tool-argument healing for low/medium models: optional numeric and boolean parameters accept string representations at provider validation, then normalize to native types before tool execution.
 - Webchat hydrate now collapses repeated failures from the same retried turn after refresh; HTTP 413 is always eligible for provider failover, and `.env.example` documents provider routing settings.
 - Full-page webchat UI aligned to mockup: conversation rail, room head/rename, IBM Plex, composer/Stop, `.msg` bubbles (no mock scenario chips).

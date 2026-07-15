@@ -28,6 +28,7 @@ class WebchatDocsIndexTest extends TestCase
         config([
             'webchat.docs_root' => $this->tmpRoot,
             'webchat.storage_root' => $this->tmpStorage,
+            'webchat.docs_app_id' => 'aipedia-test',
         ]);
         // Default for most tests: usable index. Blocking tests call beginReindex().
         (new WebchatDocsIndex(WebchatConfig::load()))->build();
@@ -82,6 +83,9 @@ class WebchatDocsIndexTest extends TestCase
         $data = $index->load();
         $this->assertSame(1, $data['document_count']);
         $this->assertSame('a/hello.md', $data['documents'][0]['path']);
+        $this->assertSame('a', $data['documents'][0]['domain']);
+        $this->assertSame('aipedia-test', $data['documents'][0]['app_id']);
+        $this->assertNotEmpty($data['documents'][0]['chunks']);
     }
 
     public function test_job_builds_index()

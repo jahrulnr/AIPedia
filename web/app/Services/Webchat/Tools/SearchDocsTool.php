@@ -48,7 +48,13 @@ class SearchDocsTool
             ];
         }
 
-        $hits = $this->index->search($query, $topK);
+        $filters = [];
+        foreach (['language', 'domain'] as $filter) {
+            if (is_string($args[$filter] ?? null) && trim($args[$filter]) !== '') {
+                $filters[$filter] = trim($args[$filter]);
+            }
+        }
+        $hits = $this->index->search($query, $topK, $filters);
 
         return [
             'ok' => true,

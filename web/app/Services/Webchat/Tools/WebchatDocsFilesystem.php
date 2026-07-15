@@ -26,6 +26,7 @@ class WebchatDocsFilesystem
         }
 
         $limit = min(100, max(1, (int) ($args['max_entries'] ?? 50)));
+        $offset = min(100000, max(0, (int) ($args['offset'] ?? 0)));
         $entries = [];
         $iterator = new \FilesystemIterator($directory, \FilesystemIterator::SKIP_DOTS);
         foreach ($iterator as $entry) {
@@ -35,14 +36,21 @@ class WebchatDocsFilesystem
                 'path' => $this->relativeToRoot($entryPath),
                 'type' => $entry->isDir() ? 'directory' : 'file',
             ];
-            if (count($entries) >= $limit) {
-                break;
-            }
         }
 
         usort($entries, static fn (array $a, array $b): int => [$a['type'], $a['name']] <=> [$b['type'], $b['name']]);
+        $total = count($entries);
+        $entries = array_slice($entries, $offset, $limit);
+        $nextOffset = $offset + count($entries);
 
-        return $this->ok(['path' => $relative, 'entries' => $entries], count($entries) >= $limit);
+        return $this->ok([
+            'path' => $relative,
+            'entries' => $entries,
+            'offset' => $offset,
+            'has_more' => $nextOffset < $total,
+            'next_offset' => $nextOffset < $total ? $nextOffset : null,
+            'total' => $total,
+        ], $nextOffset < $total);
     }
 
     public function readFile(array $args): array
@@ -57,16 +65,25 @@ class WebchatDocsFilesystem
         }
 
         $maxChars = min(20000, max(1, (int) ($args['max_chars'] ?? 12000)));
+        $offset = min(1000000, max(0, (int) ($args['offset'] ?? 0)));
         $content = file_get_contents($file);
         if ($content === false) {
             return $this->fail('read_failed', 'file could not be read');
         }
 
+        $length = mb_strlen($content);
+        $slice = mb_substr($content, $offset, $maxChars);
+        $nextOffset = $offset + mb_strlen($slice);
+
         return $this->ok([
             'path' => $relative,
-            'content' => mb_substr($content, 0, $maxChars),
-            'truncated' => mb_strlen($content) > $maxChars,
-        ], mb_strlen($content) > $maxChars);
+            'content' => $slice,
+            'offset' => $offset,
+            'has_more' => $nextOffset < $length,
+            'next_offset' => $nextOffset < $length ? $nextOffset : null,
+            'total_chars' => $length,
+            'truncated' => $nextOffset < $length,
+        ], $nextOffset < $length);
     }
 
     public function grep(array $args): array

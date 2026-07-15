@@ -2,6 +2,7 @@
 
 return [
     'docs_root' => env('WEBCHAT_DOCS_ROOT', base_path('docs/webchat')),
+    'docs_app_id' => env('WEBCHAT_DOCS_APP_ID', 'aipedia'),
     'storage_root' => env('WEBCHAT_STORAGE_ROOT', storage_path('app/webchat')),
     'write_enabled' => false,
     'llm_stub' => env('WEBCHAT_LLM_STUB', true),
@@ -44,7 +45,9 @@ return [
     'phase' => (int) env('WEBCHAT_PHASE', 2),
     'prompts_root' => resource_path('webchat/prompts'),
     'tools_root' => resource_path('webchat/tools'),
-    'docs_top_k' => 5,
+    'docs_top_k' => (int) env('WEBCHAT_DOCS_TOP_K', 5),
+    'docs_fuzzy_enabled' => filter_var(env('WEBCHAT_DOCS_FUZZY_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+    'docs_min_score' => (float) env('WEBCHAT_DOCS_MIN_SCORE', 0.5),
     'llm_timeout_sec' => (int) env('WEBCHAT_LLM_TIMEOUT_SEC', 60),
     'context_compaction_enabled' => filter_var(env('WEBCHAT_CONTEXT_COMPACTION_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
     'context_max_input_tokens' => (int) env('WEBCHAT_CONTEXT_MAX_INPUT_TOKENS', 12000),

@@ -13,6 +13,12 @@
         "type": "integer",
         "minimum": 1,
         "maximum": 20000
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000000,
+        "description": "Character offset into the Markdown file. Use data.next_offset when data.has_more is true."
       }
     },
     "required": ["path"],

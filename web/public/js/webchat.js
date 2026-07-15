@@ -265,9 +265,10 @@
             }).join('') + '</ul>';
         } else {
             body = '<div class="tool-rows">' + items.map(function (row) {
+                const badge = modelBadge(row.model);
                 return (
                     '<div class="tool-row">' +
-                    '<div class="tool-row__call">' + modelBadge(row.model) + "<br/>" + escapeHtml(row.call) + '</div>' +
+                    '<div class="tool-row__call">' + badge + (badge ? '<br/>' : '') + escapeHtml(row.call) + '</div>' +
                     '<div class="tool-row__result' + (row.ok === false ? ' is-fail' : '') + '">' +
                     escapeHtml(row.result) + '</div></div>'
                 );
@@ -629,17 +630,20 @@
     function applyToolCall(item) {
         const state = ensureTurnUi(item.turn_id);
         const callId = item.call_id || item.id || ('call_' + state.tools.length);
+        const displayModel = item.model || (item.origin === 'host_preflight'
+            ? { provider: 'AIPedia', id: 'docs preflight' }
+            : null);
         const existing = state.tools.find(function (t) { return t.callId === callId; });
         if (existing) {
             existing.call = formatToolCall(item.name, item.arguments || {});
-            existing.model = item.model || existing.model || null;
+            existing.model = displayModel || existing.model || null;
         } else {
             state.tools.push({
                 callId: callId,
                 call: formatToolCall(item.name, item.arguments || {}),
                 result: '…',
                 ok: true,
-                model: item.model || null,
+                model: displayModel,
             });
         }
         paintTurnBubble(state);

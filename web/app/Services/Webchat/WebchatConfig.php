@@ -6,6 +6,7 @@ class WebchatConfig
 {
     public string $docsRoot;
     public string $storageRoot;
+    public string $docsAppId;
     public bool $writeEnabled;
     public string $llmStrategy;
     public string $llmActiveProvider;
@@ -66,6 +67,7 @@ class WebchatConfig
         $self = new self();
         $self->docsRoot = (string) $cfg['docs_root'];
         $self->storageRoot = (string) $cfg['storage_root'];
+        $self->docsAppId = trim((string) ($cfg['docs_app_id'] ?? 'aipedia')) ?: 'aipedia';
         $self->writeEnabled = (bool) $cfg['write_enabled'];
         $self->llmStrategy = strtolower((string) ($cfg['llm_strategy'] ?? 'failover'));
         if (!in_array($self->llmStrategy, ['switch', 'failover', 'round_robin'], true)) {
