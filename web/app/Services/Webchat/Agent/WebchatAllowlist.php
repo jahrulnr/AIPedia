@@ -25,11 +25,11 @@ class WebchatAllowlist
             return ['search_docs', 'list_dir', 'read_file', 'grep', 'list_modules', 'search_admin_routes'];
         }
         if ($phase === 4) {
-            return ['search_docs', 'list_dir', 'read_file', 'grep', 'list_modules', 'search_admin_routes', 'get_voucher', 'list_vouchers'];
+            return ['search_docs', 'list_dir', 'read_file', 'grep', 'list_modules', 'search_admin_routes'];
         }
         if ($phase >= 5 && $productApprovedWrites) {
-            return ['search_docs', 'list_dir', 'read_file', 'grep', 'list_modules', 'search_admin_routes', 'get_voucher', 'list_vouchers', 'draft_mutation', 'confirm_mutation'];
+            return ['search_docs', 'list_dir', 'read_file', 'grep', 'list_modules', 'search_admin_routes', 'draft_mutation', 'confirm_mutation'];
         }
-        return ['search_docs', 'list_dir', 'read_file', 'grep', 'list_modules', 'search_admin_routes', 'get_voucher', 'list_vouchers'];
+        return ['search_docs', 'list_dir', 'read_file', 'grep', 'list_modules', 'search_admin_routes'];
     }
 }
