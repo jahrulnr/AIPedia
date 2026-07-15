@@ -62,6 +62,8 @@ class ProcessChatTurnJob implements ShouldQueue
                 'type' => 'user_message',
                 'id' => 'itm_' . $this->newUlid(),
                 'text' => $this->userMessage,
+                'admin_user_id' => (int) ($this->admin['admin_user_id'] ?? 0),
+                'admin_display_name' => (string) ($this->admin['admin_display_name'] ?? 'Admin'),
             ]);
 
             $this->appendLine($store, $cfg, [
@@ -71,7 +73,19 @@ class ProcessChatTurnJob implements ShouldQueue
                 'id' => 'itm_' . $this->newUlid(),
             ]);
 
-            $store->appendSessionIndex($this->threadId, (int) ($this->admin['admin_user_id'] ?? 0), null);
+            $prev = $store->resolveConversation($this->threadId);
+            $now = microtime(true);
+            $store->appendConversationMeta(array_merge($prev ?? [], [
+                'thread_id' => $this->threadId,
+                'created_by_admin_user_id' => (int) ($prev['created_by_admin_user_id'] ?? $this->admin['admin_user_id'] ?? 0),
+                'admin_user_id' => (int) ($prev['admin_user_id'] ?? $this->admin['admin_user_id'] ?? 0),
+                'status' => 'active',
+                'last_activity_at' => $now,
+                'floor_holder_admin_id' => $prev['floor_holder_admin_id'] ?? ($this->admin['admin_user_id'] ?? null),
+                'floor_last_turn_at' => $prev['floor_last_turn_at'] ?? $now,
+                'active_turn_id' => $this->turnId,
+                'active_turn_initiator_admin_id' => (int) ($this->admin['admin_user_id'] ?? 0),
+            ]));
 
             if ($cfg->phase <= 1 || $cfg->llmStub) {
                 $this->runStub($store, $cfg);
@@ -107,6 +121,11 @@ class ProcessChatTurnJob implements ShouldQueue
                 ],
             ]);
         } finally {
+            try {
+                $store->clearActiveTurn($this->threadId);
+            } catch (\Throwable $e) {
+                // best-effort
+            }
             $lock->release($this->threadId, $this->lockToken);
         }
     }
@@ -174,7 +193,7 @@ class ProcessChatTurnJob implements ShouldQueue
         while ($rounds < $cfg->maxToolRounds) {
             $rounds++;
 
-            if ($this->isInterrupted()) {
+            if ($this->isInterrupted($cfg)) {
                 $this->appendLine($store, $cfg, [
                     'thread_id' => $this->threadId,
                     'turn_id' => $this->turnId,
@@ -311,12 +330,17 @@ class ProcessChatTurnJob implements ShouldQueue
         $store->appendThreadLine($line);
     }
 
-    private function isInterrupted(): bool
+    private function isInterrupted(WebchatConfig $cfg): bool
     {
-        $flagPath = storage_path('app/webchat/interrupt/' . $this->threadId . '/' . $this->turnId . '.flag');
-        if (file_exists($flagPath)) {
-            @unlink($flagPath);
-            return true;
+        $candidates = [
+            $cfg->storageRoot . '/interrupt/' . $this->threadId . '/' . $this->turnId . '.flag',
+            storage_path('app/webchat/interrupt/' . $this->threadId . '/' . $this->turnId . '.flag'),
+        ];
+        foreach ($candidates as $flagPath) {
+            if (file_exists($flagPath)) {
+                @unlink($flagPath);
+                return true;
+            }
         }
         return false;
     }

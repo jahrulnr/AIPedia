@@ -20,6 +20,8 @@ class WebchatConfig
     public int $docsTopK;
     public int $llmTimeoutSec;
     public int $turnJobTimeoutSec;
+    public int $turnRateLimitPerMin;
+    public int $speakFloorTtlSec;
 
     public static function load(): self
     {
@@ -49,6 +51,8 @@ class WebchatConfig
         $self->docsTopK = (int) $cfg['docs_top_k'];
         $self->llmTimeoutSec = (int) $cfg['llm_timeout_sec'];
         $self->turnJobTimeoutSec = (int) $cfg['turn_job_timeout_sec'];
+        $self->turnRateLimitPerMin = (int) ($cfg['turn_rate_limit_per_min'] ?? 10);
+        $self->speakFloorTtlSec = (int) ($cfg['speak_floor_ttl_sec'] ?? 600);
         return $self;
     }
 }

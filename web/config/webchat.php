@@ -17,4 +17,6 @@ return [
     'docs_top_k' => 5,
     'llm_timeout_sec' => (int) env('WEBCHAT_LLM_TIMEOUT_SEC', 60),
     'turn_job_timeout_sec' => (int) env('WEBCHAT_TURN_JOB_TIMEOUT_SEC', 120),
+    'turn_rate_limit_per_min' => (int) env('WEBCHAT_TURN_RATE_LIMIT_PER_MIN', 10),
+    'speak_floor_ttl_sec' => (int) env('WEBCHAT_SPEAK_FLOOR_TTL_SEC', 600),
 ];

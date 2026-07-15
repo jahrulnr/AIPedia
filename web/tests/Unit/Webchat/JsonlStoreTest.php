@@ -74,15 +74,16 @@ class JsonlStoreTest extends TestCase
         $this->assertSame(2, $lines[1]['seq']);
     }
 
-    public function test_owns_thread_respects_session_index()
+    public function test_can_access_shared_conversation_for_any_admin()
     {
         $cfg = WebchatConfig::load();
         $store = new WebchatJsonlStore($cfg);
 
         $store->appendSessionIndex('thr_test', 42, 'Demo thread');
 
-        $this->assertTrue($store->ownsThread('thr_test', 42));
-        $this->assertFalse($store->ownsThread('thr_test', 99));
+        $this->assertTrue($store->canAccessConversation('thr_test', 42));
+        $this->assertTrue($store->canAccessConversation('thr_test', 99));
+        $this->assertFalse($store->canAccessConversation('thr_missing', 42));
     }
 
     public function test_missing_thread_returns_empty_array()

@@ -64,6 +64,59 @@
     border-bottom-right-radius: 0.25rem;
 }
 
+.chat-message.user.peer {
+    align-self: flex-start;
+    background: oklch(96% 0.015 200);
+    border-bottom-left-radius: 0.25rem;
+    border-bottom-right-radius: 1rem;
+}
+
+.chat-who {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--chat-muted);
+    margin-bottom: 0.25rem;
+}
+
+.wc-floor-banner {
+    margin: 0.65rem 1rem 0;
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.55rem;
+    font-size: 0.8rem;
+    color: oklch(38% 0.08 70);
+    background: oklch(97% 0.025 85);
+    border: 1px solid oklch(88% 0.05 80);
+}
+
+.wc-toast {
+    position: absolute;
+    left: 50%;
+    bottom: 5.5rem;
+    transform: translateX(-50%);
+    z-index: 5;
+    max-width: 90%;
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    color: oklch(98% 0 0);
+    background: oklch(32% 0.04 255 / 0.92);
+}
+
+.webchat-card {
+    position: relative;
+}
+
+.webchat-input-area .btn-outline-danger {
+    border-radius: 0 0.75rem 0.75rem 0;
+    background: oklch(97% 0.02 25);
+    color: oklch(45% 0.16 25);
+    border: 1px solid oklch(80% 0.08 25);
+}
+
+.webchat-input-area .btn-primary[hidden] + .btn-outline-danger {
+    border-radius: 0 0.75rem 0.75rem 0;
+}
+
 .chat-message.agent {
     align-self: flex-start;
     background: var(--chat-agent-bg);

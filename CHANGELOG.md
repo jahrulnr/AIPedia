@@ -11,13 +11,23 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 
 ## [Unreleased]
 
+### Deferred
+
+- AI auto-title + HK idle purge (>7d)
+- Dashboard floating webchat launcher
+
+---
+
+## [0.2.0] — 2026-07-15
+
 ### Added
 
-- Gap tracker: `docs/webchat-plan-gap.md` for plan vs development status.
-
-### Planned (from shared conversation + AI-ApiContracts)
-
-See gap matrix — M-rw shared rooms, speak-floor 10m, turn rate limit 10/min, `RedactSecrets`, initiator-only Stop, message attribution, FE floor banner / New / hydrate.
+- Shared M-rw access: `CanAccessConversation`, `GET /aipedia/webchat/conversations`.
+- Speak-floor (10m) → HTTP 423; rate limit 10/min → 429 + `Retry-After`.
+- `RedactSecrets` before enqueue/JSONL; `user_message` attribution fields.
+- Interrupt initiator-only (403 otherwise); FE Stop + floor banner + New/lazy boot.
+- Gap tracker: `docs/webchat-plan-gap.md`.
+- Tests: floor lock, redact, rate limit, shared list, interrupt gate.
 
 ---
 

@@ -10,9 +10,7 @@ Living checklist. **Plan/contracts** live in sibling `AI-ApiContracts` (webchat 
 | `todo` | Not implemented |
 | `n/a` | Out of scope for this demo (documented) |
 
-Update a row when you land a PR/commit. Add a short `CHANGELOG.md` entry under `[Unreleased]` for each `todo` → `done`.
-
-Contract IDs below match `*.contract` names in the contracts pack.
+Update a row when you land a PR/commit. Add a short `CHANGELOG.md` entry under `[Unreleased]` / dated section for each `todo` → `done`.
 
 ---
 
@@ -20,77 +18,63 @@ Contract IDs below match `*.contract` names in the contracts pack.
 
 | Topic | Plan | Status | App notes / files |
 |---|---|---|---|
-| Conversation ≡ Thread + JSONL | canon | `done` | `WebchatJsonlStore`, `storage/app/webchat/` |
-| Visibility **M-rw** (any admin list/read/send) | canon | `todo` | Still `ownsThread` by creator; need `CanAccessConversation` + shared list |
-| Lazy create (no create on open) | canon | `partial` | FE does not create on load; no hydrate/`ListConversations`/localStorage yet |
-| Floating: last + New + full link | canon | `todo` | Full page only in app; mock float lives in contracts pack mockup |
-| Speak-floor 10m → HTTP **423** | canon | `todo` | No `AssertSpeakFloor` / `AcquireSpeakFloor` |
-| Rate limit 10 turns / admin / 60s → **429** | canon | `todo` | No `AssertTurnRateLimit` |
-| Stop: initiator only | canon | `partial` | Interrupt flag + worker `interrupted` ok; no initiator gate; no Stop UI |
+| Conversation ≡ Thread + JSONL | canon | `done` | `WebchatJsonlStore` |
+| Visibility **M-rw** | canon | `done` | `canAccessConversation`; `GET /conversations` |
+| Lazy create (no create on open) | canon | `done` | Boot hydrate/list/empty; create on send; New clears key |
+| Floating: last + New + full link | canon | `partial` | Full page New+hydrate; no dashboard float widget yet |
+| Speak-floor 10m → **423** | canon | `done` | `WebchatSpeakFloor` |
+| Rate limit 10/min → **429** | canon | `done` | `WebchatTurnRateLimit` |
+| Stop: initiator only | canon | `done` | Interrupt 403 for non-initiator; Stop UI |
 | AI title + HK 7d | canon | `todo` | Not wired |
-| `RedactSecrets` before JSONL+LLM | canon | `todo` | — |
-| Attribution on `user_message` | canon | `todo` | Prompt has display name; JSONL line does not |
+| `RedactSecrets` | canon | `done` | `WebchatRedactSecrets` in StartTurn |
+| Attribution on `user_message` | canon | `done` | Job + FE bubbles |
 
 ---
 
-## StartTurn pipeline (target order)
+## StartTurn pipeline
 
-Plan: auth → rate limit → speak-floor → redact → turn lock → acquire floor → enqueue.
-
-| Step | Contract | Status | Notes |
-|---|---|---|---|
-| Access | `CanAccessConversation` | `todo` | App uses `ownsThread` |
-| Rate limit | `AssertTurnRateLimit` | `todo` | |
-| Speak floor | `AssertSpeakFloor` | `todo` | |
-| Redact | `RedactSecrets` | `todo` | research blueprint in contracts pack |
-| Busy lock | `TryAcquireThreadLock` | `done` | 409 busy |
-| Acquire floor | `AcquireSpeakFloor` | `todo` | |
-| Enqueue | `ProcessChatTurn` | `partial` | Job ok; missing attribution + clear `active_turn_*` |
+| Step | Contract | Status |
+|---|---|---|
+| Access | `CanAccessConversation` | `done` |
+| Rate limit | `AssertTurnRateLimit` | `done` |
+| Speak floor | `AssertSpeakFloor` | `done` |
+| Redact | `RedactSecrets` | `done` |
+| Busy lock | `TryAcquireThreadLock` | `done` |
+| Acquire floor | `AcquireSpeakFloor` | `done` |
+| Enqueue | `ProcessChatTurn` | `done` (+ attribution, clear active_turn) |
 
 ---
 
 ## HTTP surface
 
-| Method | Plan path (admin webchat) | App route | Status |
-|---|---|---|---|
-| GET list | `/conversations` | — | `todo` |
-| POST create | `/threads` | `POST /aipedia/webchat/threads` | `partial` (works; meta fields incomplete) |
-| GET hydrate | `/threads/{id}` | `GET …/threads/{id}` | `partial` (no floor/`active_turn_*`) |
-| POST turn | `/threads/{id}/turns` | `POST …/turns` | `partial` |
-| GET SSE | `/threads/{id}/events` | `GET …/events` | `done` (access still owner-gated) |
-| POST interrupt | `/threads/{id}/interrupt` | `POST …/interrupt` | `partial` |
+| Method | App route | Status |
+|---|---|---|
+| GET list | `GET /aipedia/webchat/conversations` | `done` |
+| POST create | `POST …/threads` | `done` |
+| GET hydrate | `GET …/threads/{id}` (+ floor fields) | `done` |
+| POST turn | `POST …/turns` | `done` |
+| GET SSE | `GET …/events` | `done` |
+| POST interrupt | `POST …/interrupt` (initiator) | `done` |
 
 ---
 
-## Frontend (production Blade/JS — not mock harness)
+## Frontend
 
-| UX | Plan | Status | Notes |
-|---|---|---|---|
-| Boot: localStorage → GET → list → empty | frontend-guide | `todo` | |
-| New (lazy) | frontend-guide | `todo` | |
-| Send ↔ Stop when busy | frontend-guide | `todo` | Send only today |
-| Floor banner + countdown | frontend-guide | `todo` | |
-| Handle 423 / 429 / 409 | frontend-guide | `todo` | |
-| User bubble attribution | frontend-guide | `todo` | |
-| Mock scenario chips (Seed / Sim *) | mockup only | `n/a` | Never port from contracts `mockup/` |
-
----
-
-## Already solid (baseline 0.1.0)
-
-- Queue job + JSONL append + SSE stream  
-- Stub / LLM agent loop + `search_docs`  
-- Thread busy lock → 409  
-- Interrupt flag polled in agent loop → `turn.failed` `interrupted`  
-- Create-on-first-send path in FE (lazy-ish)
+| UX | Status |
+|---|---|
+| Boot localStorage → GET → list → empty | `done` |
+| New (lazy) | `done` |
+| Send ↔ Stop | `done` |
+| Floor banner | `done` |
+| Handle 423 / 429 / 409 | `done` |
+| Attribution | `done` |
+| Mock scenario chips | `n/a` |
 
 ---
 
-## How to use this file
+## Deferred
 
-1. Pick next `todo` / `partial` row (prefer P0 access → floor → RL → redact → FE).  
-2. Implement against contracts (open full `.contract` file, no line-window).  
-3. Flip status here + add `CHANGELOG.md` bullet.  
-4. Prefer a Feature/Unit test that locks the new behavior.
+- Auto title job + housekeep idle > 7d  
+- Dashboard floating launcher (full page covers main demo)
 
-Last reviewed: 2026-07-15.
+Last reviewed: 2026-07-15 (M-rw land).

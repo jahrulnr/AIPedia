@@ -11,6 +11,8 @@ class JsonlLine
     public string $type;
     public string $id;
     public ?string $text = null;
+    public ?int $admin_user_id = null;
+    public ?string $admin_display_name = null;
     public ?string $call_id = null;
     public ?string $name = null;
     public ?array $arguments = null;

@@ -24,6 +24,7 @@ Route::get('/dashboard', function () {
 
 Route::prefix('aipedia/webchat')->name('aipedia.webchat.')->group(function () {
     Route::get('/', [AipediaWebchatController::class, 'index'])->name('index');
+    Route::get('/conversations', [AipediaWebchatController::class, 'listConversations'])->name('conversations.index');
     Route::post('/threads', [AipediaWebchatController::class, 'createThread'])->name('threads.create');
     Route::get('/threads/{threadId}', [AipediaWebchatController::class, 'getThread'])->name('threads.get');
     Route::post('/threads/{threadId}/turns', [AipediaWebchatController::class, 'startTurn'])->name('threads.turns');

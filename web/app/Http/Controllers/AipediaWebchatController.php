@@ -8,9 +8,13 @@ use App\Services\Webchat\Jsonl\WebchatJsonlStore;
 use App\Services\Webchat\Jsonl\WebchatThreadLock;
 use App\Services\Webchat\WebchatConfig;
 use App\Services\Webchat\WebchatEventStreamer;
+use App\Services\Webchat\WebchatFloorLockedException;
+use App\Services\Webchat\WebchatRateLimitedException;
+use App\Services\Webchat\WebchatRedactSecrets;
+use App\Services\Webchat\WebchatSpeakFloor;
+use App\Services\Webchat\WebchatTurnRateLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AipediaWebchatController extends Controller
@@ -38,7 +42,22 @@ class AipediaWebchatController extends Controller
     public function index(Request $request)
     {
         return view('aipedia.webchat.chat', [
-            'threads' => [],
+            'adminUserId' => $this->admin($request)['admin_user_id'],
+        ]);
+    }
+
+    public function listConversations(Request $request): JsonResponse
+    {
+        $admin = $this->admin($request);
+        if ($admin['admin_user_id'] <= 0) {
+            return response()->json(['error' => 'forbidden'], 403);
+        }
+
+        $cfg = WebchatConfig::load();
+        $store = new WebchatJsonlStore($cfg);
+
+        return response()->json([
+            'conversations' => $store->listActiveConversations(),
         ]);
     }
 
@@ -60,6 +79,7 @@ class AipediaWebchatController extends Controller
         return response()->json([
             'thread_id' => $threadId,
             'seq_head' => $line->seq,
+            'created_by_admin_user_id' => $admin['admin_user_id'],
         ], 201);
     }
 
@@ -68,11 +88,12 @@ class AipediaWebchatController extends Controller
         $cfg = WebchatConfig::load();
         $store = new WebchatJsonlStore($cfg);
         $lock = new WebchatThreadLock($cfg);
+        $floor = new WebchatSpeakFloor($cfg, $store);
         $admin = $this->admin($request);
 
         $afterSeq = (int) $request->input('after_seq', 0);
 
-        if (!$store->ownsThread($threadId, $admin['admin_user_id'])) {
+        if (!$store->canAccessConversation($threadId, $admin['admin_user_id'])) {
             return response()->json(['error' => 'not_found'], 404);
         }
 
@@ -85,10 +106,17 @@ class AipediaWebchatController extends Controller
             }
         }
 
+        $row = $store->resolveConversation($threadId);
+
         return response()->json([
             'thread_id' => $threadId,
             'seq_head' => $seqHead,
             'busy' => $lock->isBusy($threadId),
+            'floor_holder_admin_id' => isset($row['floor_holder_admin_id']) ? (int) $row['floor_holder_admin_id'] : null,
+            'floor_remaining_sec' => $floor->floorRemainingSec($row, $admin['admin_user_id']),
+            'active_turn_id' => $row['active_turn_id'] ?? null,
+            'active_turn_initiator_admin_id' => isset($row['active_turn_initiator_admin_id'])
+                ? (int) $row['active_turn_initiator_admin_id'] : null,
             'items' => $items,
         ]);
     }
@@ -98,25 +126,57 @@ class AipediaWebchatController extends Controller
         $cfg = WebchatConfig::load();
         $store = new WebchatJsonlStore($cfg);
         $lock = new WebchatThreadLock($cfg);
+        $floor = new WebchatSpeakFloor($cfg, $store);
+        $rl = new WebchatTurnRateLimit($cfg);
         $admin = $this->admin($request);
 
-        $message = trim($request->input('message', ''));
+        $message = trim((string) $request->input('message', ''));
         if ($message === '') {
             return response()->json(['error' => 'empty'], 422);
         }
 
-        if (!$store->ownsThread($threadId, $admin['admin_user_id'])) {
+        if (!$store->canAccessConversation($threadId, $admin['admin_user_id'])) {
             return response()->json(['error' => 'not_found'], 404);
         }
 
         try {
+            $rl->assert($admin['admin_user_id']);
+        } catch (WebchatRateLimitedException $e) {
+            return response()->json([
+                'error' => 'rate_limited',
+                'code' => 'rate_limited',
+            ], 429)->header('Retry-After', (string) $e->retryAfterSec);
+        }
+
+        try {
+            $floor->assert($threadId, $admin['admin_user_id']);
+        } catch (WebchatFloorLockedException $e) {
+            return response()->json([
+                'error' => 'floor_locked',
+                'code' => 'floor_locked',
+                'holder_admin_user_id' => $e->holderAdminUserId,
+                'remaining_sec' => $e->remainingSec,
+            ], 423);
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'not_found') {
+                return response()->json(['error' => 'not_found'], 404);
+            }
+            throw $e;
+        }
+
+        $redacted = WebchatRedactSecrets::redact($message);
+        $safeMessage = $redacted['redacted_text'];
+
+        try {
             $lockRec = $lock->tryAcquire($threadId, 300);
         } catch (WebchatBusyException $e) {
-            return response()->json(['error' => 'busy'], 409);
+            return response()->json(['error' => 'busy', 'code' => 'thread_busy'], 409);
         }
 
         $turnId = 'trn_' . $this->newUlid();
-        ProcessChatTurnJob::dispatch($threadId, $turnId, $message, $admin, $lockRec['token']);
+        $floor->acquire($threadId, $admin['admin_user_id'], $turnId);
+
+        ProcessChatTurnJob::dispatch($threadId, $turnId, $safeMessage, $admin, $lockRec['token']);
 
         $lines = $store->readThread($threadId);
         $seqHead = 0;
@@ -131,6 +191,8 @@ class AipediaWebchatController extends Controller
             'turn_id' => $turnId,
             'seq_head' => $seqHead,
             'status' => 'queued',
+            'floor_holder_admin_id' => $admin['admin_user_id'],
+            'floor_remaining_sec' => 0,
         ], 202);
     }
 
@@ -140,7 +202,7 @@ class AipediaWebchatController extends Controller
         $store = new WebchatJsonlStore($cfg);
         $admin = $this->admin($request);
 
-        if (!$store->ownsThread($threadId, $admin['admin_user_id'])) {
+        if (!$store->canAccessConversation($threadId, $admin['admin_user_id'])) {
             return response("event: error\ndata: {\"message\":\"forbidden\"}\n\n", 200, [
                 'Content-Type' => 'text/event-stream',
                 'Cache-Control' => 'no-cache',
@@ -171,20 +233,28 @@ class AipediaWebchatController extends Controller
         $cfg = WebchatConfig::load();
         $store = new WebchatJsonlStore($cfg);
         $admin = $this->admin($request);
-        $turnId = $request->input('turn_id');
 
-        if (!$store->ownsThread($threadId, $admin['admin_user_id']) || empty($turnId)) {
+        if (!$store->canAccessConversation($threadId, $admin['admin_user_id'])) {
             return response()->json(['error' => 'not_found'], 404);
         }
 
-        $flagPath = storage_path('app/webchat/interrupt/' . $threadId . '/' . $turnId . '.flag');
+        $row = $store->resolveConversation($threadId);
+        $turnId = $request->input('turn_id') ?: ($row['active_turn_id'] ?? null);
+        $initiator = isset($row['active_turn_initiator_admin_id'])
+            ? (int) $row['active_turn_initiator_admin_id'] : null;
+
+        if (empty($turnId) || $initiator !== $admin['admin_user_id']) {
+            return response()->json(['error' => 'forbidden', 'code' => 'not_initiator'], 403);
+        }
+
+        $flagPath = $cfg->storageRoot . '/interrupt/' . $threadId . '/' . $turnId . '.flag';
         $dir = dirname($flagPath);
         if (!is_dir($dir)) {
             mkdir($dir, 0775, true);
         }
         file_put_contents($flagPath, '1');
 
-        return response()->json(['status' => 'interrupted']);
+        return response()->json(['ok' => true, 'status' => 'interrupt_requested'], 202);
     }
 
     private function newUlid(): string

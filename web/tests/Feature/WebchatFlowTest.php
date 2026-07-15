@@ -85,6 +85,52 @@ class WebchatFlowTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_list_conversations_returns_shared_active_rooms()
+    {
+        $this->postJson('/aipedia/webchat/threads');
+        $response = $this->getJson('/aipedia/webchat/conversations');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure(['conversations']);
+        $this->assertNotEmpty($response->json('conversations'));
+    }
+
+    public function test_start_turn_redacts_secrets_in_user_message()
+    {
+        config(['webchat.llm_stub' => true]);
+
+        $created = $this->postJson('/aipedia/webchat/threads');
+        $threadId = $created->json('thread_id');
+
+        $this->postJson("/aipedia/webchat/threads/{$threadId}/turns", [
+            'message' => 'here is gsk_abcdefghijklmnopqrstuvwxyz123456',
+        ])->assertStatus(202);
+
+        $thread = $this->getJson("/aipedia/webchat/threads/{$threadId}?after_seq=0");
+        $users = array_values(array_filter($thread->json('items'), static function ($i) {
+            return ($i['type'] ?? '') === 'user_message';
+        }));
+
+        $this->assertNotEmpty($users);
+        $this->assertStringContainsString('[REDACTED_GROQ_KEY]', $users[0]['text']);
+        $this->assertArrayHasKey('admin_display_name', $users[0]);
+    }
+
+    public function test_get_thread_includes_floor_fields()
+    {
+        $created = $this->postJson('/aipedia/webchat/threads');
+        $threadId = $created->json('thread_id');
+
+        $response = $this->getJson("/aipedia/webchat/threads/{$threadId}?after_seq=0");
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'floor_holder_admin_id',
+                'floor_remaining_sec',
+                'active_turn_id',
+                'active_turn_initiator_admin_id',
+            ]);
+    }
+
     public function test_events_stream_returns_sse_events()
     {
         $created = $this->postJson('/aipedia/webchat/threads');
