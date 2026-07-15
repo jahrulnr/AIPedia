@@ -28,7 +28,11 @@
         <server name="SESSION_DRIVER" value="array"/>
         <server name="TELESCOPE_ENABLED" value="false"/>
         <server name="WEBCHAT_LLM_STUB" value="true"/>
-        <server name="WEBCHAT_LLM_API" value="chat"/>
+        <server name="WEBCHAT_LLM_PROVIDERS" value="TEST"/>
+        <server name="WEBCHAT_LLM_TEST_BASE_URL" value="https://example.test/v1"/>
+        <server name="WEBCHAT_LLM_TEST_API_KEY" value="test-key"/>
+        <server name="WEBCHAT_LLM_TEST_MODEL" value="test-model"/>
+        <server name="WEBCHAT_LLM_TEST_API" value="chat"/>
         <server name="WEBCHAT_PHASE" value="2"/>
     </php>
 </phpunit>

@@ -23,11 +23,18 @@
     <div class="wc-shell">
         <aside class="wc-rail" aria-label="Shared conversation list">
             <div class="wc-rail__top">
+                <div class="wc-rail__heading">
+                    <div>
+                        <span class="wc-rail__eyebrow">Workspace</span>
+                        <strong>Conversations</strong>
+                    </div>
+                    <span class="wc-rail__count" id="conversationCount" aria-label="Conversation count">—</span>
+                </div>
                 <button type="button" class="wc-rail__new" id="btnNewChat">
                     <i class="bi bi-plus-lg"></i> New chat
                 </button>
             </div>
-            <div class="wc-rail__hk" title="Shared rooms — all admins">
+            <div class="wc-rail__hk">
                 <i class="bi bi-people"></i>
                 Shared · semua admin lihat &amp; kirim
             </div>
@@ -39,22 +46,22 @@
                 <div class="card webchat-card" id="webchat">
                     <div class="wc-room-head" id="roomHead">
                         <div class="wc-room-head__title" id="roomTitle">New chat</div>
-                        <div class="wc-room-head__meta" id="roomMeta">title_source=pending</div>
-                        <button type="button" class="wc-room-head__edit" id="btnRename" title="Rename (manual)">
+                        <div class="wc-room-head__meta" id="roomMeta">Naming…</div>
+                        <button type="button" class="wc-room-head__edit" id="btnRename" aria-label="Rename conversation" data-wc-tooltip="Rename conversation">
                             <i class="bi bi-pencil"></i>
                         </button>
                     </div>
                     <div class="wc-floor-banner" id="chatFloor" hidden></div>
                     <div class="wc-index-banner" id="chatIndexBanner" hidden></div>
-                    <div class="wc-toast" id="chatToast" hidden></div>
+                    <div class="wc-toast" id="chatToast" role="status" aria-live="polite" hidden></div>
                     <div class="webchat-messages" id="chatMessages" role="log" aria-live="polite">
                         <div class="chat-welcome">
                             <div class="chat-welcome-icon"><i class="bi bi-stars"></i></div>
-                            <h5>Selamat datang di Aipedia AI</h5>
+                            <h5>Selamat datang di AIPedia</h5>
                             <p class="text-muted small mb-0">Shared room · lazy create on send · Stop hanya initiator.</p>
                         </div>
                     </div>
-                    <div class="webchat-status" id="chatStatus">Ready</div>
+                    <div class="webchat-status" id="chatStatus" data-state="ready">Ready</div>
                     <div class="webchat-composer">
                         <div class="composer-row">
                             <input type="text" class="composer-input" id="chatInput" placeholder="Ketik pertanyaan..." autocomplete="off">
@@ -70,6 +77,39 @@
             </div>
         </div>
     </div>
+
+    <div class="wc-dialog" id="renameDialog" hidden>
+        <div class="wc-dialog__backdrop" data-rename-close></div>
+        <section class="wc-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="renameDialogTitle" aria-describedby="renameDialogHelp" tabindex="-1">
+            <div class="wc-dialog__accent" aria-hidden="true"></div>
+            <header class="wc-dialog__header">
+                <div class="wc-dialog__icon" aria-hidden="true"><i class="bi bi-pencil-square"></i></div>
+                <div>
+                    <span class="wc-dialog__eyebrow">Conversation</span>
+                    <h5 id="renameDialogTitle">Rename conversation</h5>
+                </div>
+                <button type="button" class="wc-dialog__close" data-rename-close aria-label="Close rename dialog" data-wc-tooltip="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+            <form class="wc-dialog__form" id="renameForm" novalidate>
+                <label for="renameInput">Conversation title</label>
+                <div class="wc-dialog__field">
+                    <input type="text" id="renameInput" maxlength="60" autocomplete="off" aria-describedby="renameDialogHelp renameDialogError">
+                    <span class="wc-dialog__count" id="renameCount">0/60</span>
+                </div>
+                <p class="wc-dialog__help" id="renameDialogHelp">Use a short title that makes this room easy to find later.</p>
+                <p class="wc-dialog__error" id="renameDialogError" role="alert" hidden></p>
+                <div class="wc-dialog__actions">
+                    <button type="button" class="wc-dialog__button wc-dialog__button--ghost" data-rename-close>Cancel</button>
+                    <button type="submit" class="wc-dialog__button wc-dialog__button--primary" id="renameSubmit">
+                        <span>Save title</span>
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
 @endsection
 
 @push('scripts')
@@ -82,5 +122,7 @@
         threadBase: "{{ url('/aipedia/webchat/threads') }}"
     };
 </script>
+<script src="{{ asset('vendor/marked/marked.umd.js') }}"></script>
+<script src="{{ asset('vendor/dompurify/purify.min.js') }}"></script>
 <script src="{{ asset('js/webchat.js') }}"></script>
 @endpush

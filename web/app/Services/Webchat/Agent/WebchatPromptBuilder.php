@@ -36,7 +36,9 @@ class WebchatPromptBuilder
 
         $out = [
             ['role' => 'system', 'content' => $system],
-            ['role' => 'developer', 'content' => $developer],
+            // Keep application instructions as system for provider compatibility.
+            // The separate message preserves the stable static prefix above.
+            ['role' => 'system', 'content' => $developer],
         ];
 
         foreach ($messages as $msg) {
@@ -73,8 +75,8 @@ class WebchatPromptBuilder
             'admin_role_id' => $admin['admin_role_id'] ?? '0',
             'locale' => $admin['locale'] ?? 'id',
             'cms_environment' => $admin['cms_environment'] ?? 'local',
-            'active_domain' => $admin['active_domain'] ?? '',
-            'allowed_tool_domains' => $admin['allowed_tool_domains'] ?? 'docs',
+            'available_tools' => $admin['available_tools'] ?? 'search_docs',
+            'indexed_document_count' => $admin['indexed_document_count'] ?? '0',
             'pii_redaction' => $admin['pii_redaction'] ?? 'false',
             'current_admin_path' => $admin['current_admin_path'] ?? '',
             'last_entity_ref' => $admin['last_entity_ref'] ?? '',

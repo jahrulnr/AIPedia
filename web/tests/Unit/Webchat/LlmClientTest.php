@@ -8,9 +8,25 @@ use Tests\TestCase;
 
 class LlmClientTest extends TestCase
 {
+    private function configureLlm(string $api = 'chat', string $model = 'test-model'): void
+    {
+        config([
+            'webchat.llm_active_provider' => 'TEST',
+            'webchat.llm_providers' => [
+                'TEST' => [
+                    'id' => 'TEST',
+                    'base_url' => 'https://example.test/v1',
+                    'api_key' => 'test-key',
+                    'model' => $model,
+                    'api' => $api,
+                ],
+            ],
+        ]);
+    }
+
     public function test_normalize_parameters_makes_optional_fields_nullable_and_required()
     {
-        config(['webchat.llm_api' => 'chat']);
+        $this->configureLlm();
         $client = new WebchatLlmClient(WebchatConfig::load());
 
         $normalized = $client->normalizeParameters([
@@ -32,10 +48,7 @@ class LlmClientTest extends TestCase
 
     public function test_to_responses_request_maps_chat_history_and_tools()
     {
-        config([
-            'webchat.llm_api' => 'responses',
-            'webchat.llm_model' => 'qwen/qwen3-32b',
-        ]);
+        $this->configureLlm('responses', 'qwen/qwen3-32b');
         $client = new WebchatLlmClient(WebchatConfig::load());
 
         $body = $client->toResponsesRequest([
@@ -76,6 +89,7 @@ class LlmClientTest extends TestCase
         ]]);
 
         $this->assertSame('qwen/qwen3-32b', $body['model']);
+        $this->assertSame(4096, $body['max_output_tokens']);
         $this->assertSame("sys\n\ndev", $body['instructions']);
         $this->assertSame('user', $body['input'][0]['role']);
         $this->assertSame('function_call', $body['input'][1]['type']);
@@ -87,7 +101,7 @@ class LlmClientTest extends TestCase
 
     public function test_normalize_chat_tools_disables_strict()
     {
-        config(['webchat.llm_api' => 'chat']);
+        $this->configureLlm();
         $client = new WebchatLlmClient(WebchatConfig::load());
 
         $tools = $client->normalizeChatTools([[
@@ -113,7 +127,7 @@ class LlmClientTest extends TestCase
 
     public function test_extract_reasoning_from_responses_output()
     {
-        config(['webchat.llm_api' => 'responses']);
+        $this->configureLlm('responses');
         $client = new WebchatLlmClient(WebchatConfig::load());
 
         $text = $client->extractReasoningFromResponsesOutput([
@@ -135,7 +149,7 @@ class LlmClientTest extends TestCase
 
     public function test_extract_reasoning_from_chat_message()
     {
-        config(['webchat.llm_api' => 'chat']);
+        $this->configureLlm();
         $client = new WebchatLlmClient(WebchatConfig::load());
 
         $text = $client->extractReasoningFromChatMessage([

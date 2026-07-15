@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Log;
 class WebchatLlmClient
 {
     private WebchatConfig $cfg;
+    /** @var array<string, mixed>|null */
+    private ?array $provider = null;
 
     public function __construct(WebchatConfig $cfg)
     {
@@ -26,16 +28,28 @@ class WebchatLlmClient
      *   assistant_text: string,
      *   reasoning_text: string,
      *   assistant_message: array<string, mixed>|null,
-     *   usage: array<string, int>
+     *   usage: array<string, int>,
+     *   model: array{provider:string,id:string,api:string}
      * }
      */
     public function chat(array $messages, array $tools = []): array
     {
-        if ($this->cfg->llmApiKey === '') {
-            throw new \RuntimeException('LLM API key missing');
-        }
+        return $this->chatWithProvider($this->cfg->llmActiveProvider, $messages, $tools);
+    }
 
-        if ($this->cfg->llmApi === 'responses') {
+    /** @return array<string, mixed> */
+    public function chatWithProvider(string $providerId, array $messages, array $tools = []): array
+    {
+        $provider = $this->cfg->llmProviders[$providerId] ?? null;
+        if (!is_array($provider)) {
+            throw new WebchatLlmException('LLM provider missing: ' . $providerId, $providerId);
+        }
+        if ((string) ($provider['api_key'] ?? '') === '') {
+            throw new WebchatLlmException('LLM API key missing', $providerId);
+        }
+        $this->provider = $provider;
+
+        if ($provider['api'] === 'responses') {
             return $this->chatViaResponses($messages, $tools);
         }
 
@@ -45,9 +59,10 @@ class WebchatLlmClient
     private function chatViaCompletions(array $messages, array $tools): array
     {
         $body = [
-            'model' => $this->cfg->llmModel,
+            'model' => $this->provider['model'],
             'messages' => $messages,
             'tool_choice' => 'auto',
+            'max_tokens' => (int) $this->provider['max_output_tokens'],
         ];
 
         if ($tools !== []) {
@@ -78,6 +93,7 @@ class WebchatLlmClient
             'reasoning_text' => $this->extractReasoningFromChatMessage(is_array($choice) ? $choice : []),
             'assistant_message' => $choice,
             'usage' => $this->mapUsage($usage),
+            'model' => $this->modelMetadata(),
         ];
     }
 
@@ -141,6 +157,7 @@ class WebchatLlmClient
             'reasoning_text' => $this->extractReasoningFromResponsesOutput($output),
             'assistant_message' => $assistantMessage,
             'usage' => $this->mapUsage($payload['usage'] ?? []),
+            'model' => $this->modelMetadata(),
         ];
     }
 
@@ -270,9 +287,10 @@ class WebchatLlmClient
         }
 
         $body = [
-            'model' => $this->cfg->llmModel,
+            'model' => $this->provider['model'] ?? $this->cfg->llmModel,
             'input' => $input,
             'tool_choice' => 'auto',
+            'max_output_tokens' => (int) ($this->provider['max_output_tokens'] ?? 4096),
         ];
 
         if ($instructions !== []) {
@@ -385,10 +403,10 @@ class WebchatLlmClient
     private function postJson(string $path, array $body): array
     {
         $client = new Client([
-            'base_uri' => rtrim($this->cfg->llmBaseUrl, '/') . '/',
-            'timeout' => $this->cfg->llmTimeoutSec,
+            'base_uri' => rtrim((string) ($this->provider['base_url'] ?? $this->cfg->llmBaseUrl), '/') . '/',
+            'timeout' => (int) ($this->provider['timeout_sec'] ?? $this->cfg->llmTimeoutSec),
             'headers' => [
-                'Authorization' => 'Bearer ' . $this->cfg->llmApiKey,
+                'Authorization' => 'Bearer ' . ($this->provider['api_key'] ?? $this->cfg->llmApiKey),
                 'Content-Type' => 'application/json',
             ],
         ]);
@@ -396,27 +414,42 @@ class WebchatLlmClient
         try {
             $response = $client->post($path, ['json' => $body]);
         } catch (ConnectException $e) {
-            throw new \RuntimeException('TIMEOUT/CONNECT: ' . $e->getMessage(), 0, $e);
+            throw new WebchatLlmException(
+                'TIMEOUT/CONNECT: ' . $e->getMessage(),
+                (string) ($this->provider['id'] ?? $this->cfg->llmActiveProvider),
+                0,
+                true,
+                $e
+            );
         } catch (RequestException $e) {
             $status = $e->getResponse() ? $e->getResponse()->getStatusCode() : 0;
             $respBody = $e->getResponse() ? (string) $e->getResponse()->getBody() : '';
             $snippet = mb_substr(trim($respBody), 0, 800);
-            $code = ($status === 429 || $status >= 500 || $status === 0) ? 'HTTP_5XX' : 'HTTP_4XX';
+            $transient = $status === 0 || in_array($status, $this->cfg->llmRetryStatuses, true);
 
             Log::warning('webchat.llm_http_error', [
-                'api' => $this->cfg->llmApi,
+                'api' => $this->provider['api'] ?? $this->cfg->llmApi,
                 'path' => $path,
                 'status' => $status,
-                'model' => $this->cfg->llmModel,
+                'model' => $this->provider['model'] ?? $this->cfg->llmModel,
                 'body_snippet' => $snippet,
             ]);
 
-            throw new \RuntimeException($code . ': status=' . $status . ' ' . ($snippet !== '' ? $snippet : $e->getMessage()), 0, $e);
+            throw new WebchatLlmException(
+                ($transient ? 'TRANSIENT' : 'NON_RETRYABLE') . ': status=' . $status . ' ' . ($snippet !== '' ? $snippet : $e->getMessage()),
+                (string) ($this->provider['id'] ?? $this->cfg->llmActiveProvider),
+                $status,
+                $transient,
+                $e
+            );
         }
 
         $payload = json_decode((string) $response->getBody(), true);
         if (!is_array($payload)) {
-            throw new \RuntimeException('BAD_BODY');
+            throw new WebchatLlmException(
+                'BAD_BODY',
+                (string) ($this->provider['id'] ?? $this->cfg->llmActiveProvider)
+            );
         }
 
         return $payload;
@@ -431,7 +464,16 @@ class WebchatLlmClient
         return [
             'input_tokens' => (int) ($usage['prompt_tokens'] ?? $usage['input_tokens'] ?? 0),
             'output_tokens' => (int) ($usage['completion_tokens'] ?? $usage['output_tokens'] ?? 0),
-            'cached_input_tokens' => (int) ($usage['input_tokens_details']['cached_tokens'] ?? 0),
+            'cached_input_tokens' => (int) (
+                $usage['prompt_tokens_details']['cached_tokens']
+                ?? $usage['input_tokens_details']['cached_tokens']
+                ?? 0
+            ),
+            'cache_write_tokens' => (int) (
+                $usage['prompt_tokens_details']['cache_write_tokens']
+                ?? $usage['input_tokens_details']['cache_write_tokens']
+                ?? 0
+            ),
             'reasoning_output_tokens' => (int) ($usage['output_tokens_details']['reasoning_tokens'] ?? 0),
         ];
     }
@@ -439,5 +481,15 @@ class WebchatLlmClient
     private function newUlid(): string
     {
         return strtolower(uniqid('ulid_', true));
+    }
+
+    /** @return array{provider:string,id:string,api:string} */
+    private function modelMetadata(): array
+    {
+        return [
+            'provider' => (string) ($this->provider['id'] ?? $this->cfg->llmActiveProvider),
+            'id' => (string) ($this->provider['model'] ?? $this->cfg->llmModel),
+            'api' => (string) ($this->provider['api'] ?? $this->cfg->llmApi),
+        ];
     }
 }

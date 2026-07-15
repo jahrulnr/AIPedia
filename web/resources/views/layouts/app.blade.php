@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') | Aipedia</title>
+    <title>@yield('title', 'Dashboard') | AIPedia</title>
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/font/bootstrap-icons.css') }}">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
@@ -16,7 +16,7 @@
 <header class="topbar">
     <a href="{{ route('dashboard') }}" class="brand">
         <i class="bi bi-layers-fill"></i>
-        <span>Aipedia</span>
+        <span>AIPedia</span>
     </a>
     <button class="toggle-btn" id="sidebarToggle" type="button" aria-label="Toggle sidebar">
         <i class="bi bi-list"></i>
@@ -62,7 +62,7 @@
 
 <footer class="footer">
     <div class="d-flex justify-content-between">
-        <span>&copy; <script>document.write(new Date().getFullYear())</script> Aipedia.</span>
+        <span>&copy; <script>document.write(new Date().getFullYear())</script> AIPedia.</span>
         <span class="text-muted">Crafted with care</span>
     </div>
 </footer>

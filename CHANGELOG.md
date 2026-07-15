@@ -1,4 +1,4 @@
-# Changelog — Aipedia
+# Changelog — AIPedia
 
 All notable changes to this demo app. Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
@@ -13,6 +13,12 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 
 ### Added
 
+- Repo-local `aipedia-doc-authoring` skill with bilingual document templates, metadata-first lexical retrieval SOP, natural-prose review guidance, and dependency-free Bash/PowerShell frontmatter-pair validators. Document identity comes from its path and display title from H1, without duplicate `name`/`title` metadata.
+- Prefix-based LLM provider configuration via `WEBCHAT_LLM_PROVIDERS` and `WEBCHAT_LLM_{PROVIDER}_*` env keys; deprecated single-provider env keys removed.
+- Per-item model metadata in JSONL/SSE events and model badges for reasoning, tool calls, and responses; host tool results identify `executor=host_tool`.
+- Runtime provider routing with transient retry, circuit state, failover, and round-robin selection; provider remains pinned after a successful response within a turn.
+- Token-estimated context compaction that appends a summary checkpoint without deleting the original JSONL transcript and preserves recent turns.
+- Per-provider model capability/policy budgets: context window, max input tokens, max output tokens, request limits, and cache read/write usage normalization.
 - Retry failed turn: `POST /aipedia/webchat/threads/{id}/retry` — same `turn_id`, SSE `turn.resumed`, keeps prior tool/reasoning history (no new user message). FE Retry on Failed (not for `interrupted`).
 - AI auto-title after first completed turn (`ProcessThreadTitleJob` / stub truncate).
 - Manual rename: `PATCH /aipedia/webchat/threads/{id}` (`title_source=manual` locks auto).
@@ -26,7 +32,8 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 ### Changed
 
 - Full-page webchat UI aligned to mockup: conversation rail, room head/rename, IBM Plex, composer/Stop, `.msg` bubbles (no mock scenario chips).
-- Agent bubbles: lightweight markdown render; Thinking + Tool Calls disclosures (mockup-like); persist/stream `reasoning` JSONL from provider.
+- Replaced native browser rename prompt and title tooltips with an accessible branded dialog, inline validation, focus management, custom tooltips, polished status/toast feedback, and reduced-motion support.
+- Agent bubbles: sanitized GFM rendering through Marked and DOMPurify, including tables, lists, blockquotes, and fenced code; Thinking + Tool Calls disclosures (mockup-like); persist/stream `reasoning` JSONL from provider.
 
 ---
 
@@ -51,7 +58,7 @@ Contracts source of truth: sibling repo `AI-ApiContracts` (webchat pack) — do 
 - Webchat Phase 0–2 baseline: JSONL store, queue job, SSE events, stub/LLM turn, `search_docs`.
 - Docs knowledge as git submodule at `web/docs/webchat` → `jahrulnr/dev-docs`.
 - Hardened `.gitignore` (`.env`, debugbar, runtime JSONL, testing storage).
-- Portable naming rules in `AGENTS.md` (Aipedia prefixes; no private CMS codenames in tree).
+- Portable naming rules in `AGENTS.md` (AIPedia prefixes; no private CMS codenames in tree).
 
 ### Notes
 

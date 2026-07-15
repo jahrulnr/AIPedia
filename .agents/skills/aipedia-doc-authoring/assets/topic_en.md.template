@@ -1,0 +1,45 @@
+---
+description: "[What this topic explains and when a reader should retrieve it.]"
+tags:
+  - [taxonomy-tag]
+  - [taxonomy-tag]
+keywords:
+  - [alias-or-user-phrase]
+  - [acronym-or-expanded-form]
+  - [related-search-intent]
+  - [spelling-or-hyphenation-variant]
+---
+
+# [Topic title]
+
+## Overview
+
+[Explain what it is, why it exists, and its operating context.]
+
+## How it works
+
+[Explain the mechanism and key concepts.]
+
+## When to use
+
+[List concrete selection signals.]
+
+## When not to use
+
+[List boundaries and better alternatives.]
+
+## Trade-offs and pitfalls
+
+[Explain costs, risks, and common mistakes.]
+
+## Example
+
+[Provide one concise, realistic example.]
+
+## Related
+
+- [Related topic](relative-path_en.md)
+
+## References
+
+- [Primary source](https://example.com)

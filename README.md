@@ -1,4 +1,4 @@
-# Aipedia
+# AIPedia
 
 Laravel 8.83 / PHP 8.1 project. Docker setup single-container PHP-FPM + nginx + supervisor
 

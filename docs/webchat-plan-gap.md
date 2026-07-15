@@ -88,6 +88,12 @@ Update a row when you land a PR/commit. Add a short `CHANGELOG.md` entry under `
 
 ## Deferred
 
-_(none for locked M-rw product surface)_
+| Topic | Status | Notes |
+|---|---|---|
+| Prefix-based LLM provider config | `done` | `WEBCHAT_LLM_PROVIDERS` + `WEBCHAT_LLM_{ID}_*`; deprecated single-provider keys removed |
+| Per-item model metadata | `done` | Reasoning, planner/tool calls, responses, and completion events carry provider/model/api/role; host tool results carry executor metadata |
+| LLM failover / round-robin execution | `done` | Runtime router retries transient errors, records circuit health, rotates round-robin, and pins the successful provider per turn |
+| Context compaction | `done` | Token-estimated checkpoint summary preserves original JSONL and retains recent turns in the LLM prompt |
+| Model context/output budgets | `done` | Provider-model metadata bounds input/output requests and compaction uses the lowest enabled-provider input budget |
 
 Last reviewed: 2026-07-15 (RetryTurn / ResumeChatTurn).

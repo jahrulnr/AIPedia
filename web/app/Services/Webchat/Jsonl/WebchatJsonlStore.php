@@ -351,6 +351,15 @@ class WebchatJsonlStore
         if ($line->error !== null) {
             $arr['error'] = $line->error;
         }
+        if ($line->model !== null) {
+            $arr['model'] = $line->model;
+        }
+        if ($line->executor !== null) {
+            $arr['executor'] = $line->executor;
+        }
+        if ($line->origin !== null) {
+            $arr['origin'] = $line->origin;
+        }
 
         return $arr;
     }

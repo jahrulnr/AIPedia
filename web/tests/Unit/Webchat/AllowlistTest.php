@@ -17,13 +17,16 @@ class AllowlistTest extends TestCase
         $this->assertSame([], $allowlist->forPhase(1));
     }
 
-    public function test_phase_2_has_only_search_docs()
+    public function test_phase_2_has_read_only_docs_tools()
     {
         $cfg = new WebchatConfig();
         $cfg->phase = 2;
         $allowlist = new WebchatAllowlist($cfg);
 
-        $this->assertSame(['search_docs'], $allowlist->forPhase(2));
+        $this->assertSame(
+            ['search_docs', 'list_dir', 'read_file', 'grep'],
+            $allowlist->forPhase(2)
+        );
     }
 
     public function test_phase_3_includes_discovery_tools()
@@ -33,7 +36,7 @@ class AllowlistTest extends TestCase
         $allowlist = new WebchatAllowlist($cfg);
 
         $this->assertSame(
-            ['search_docs', 'list_modules', 'search_admin_routes'],
+            ['search_docs', 'list_dir', 'read_file', 'grep', 'list_modules', 'search_admin_routes'],
             $allowlist->forPhase(3)
         );
     }

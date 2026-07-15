@@ -13,7 +13,7 @@ down: ## Stop all containers
 	docker compose down
 
 restart: ## Restart all containers
-	docker compose restart
+	docker compose up -d --force-recreate
 
 logs: ## Tail container logs
 	docker compose logs -f app

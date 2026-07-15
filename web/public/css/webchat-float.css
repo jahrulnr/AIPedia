@@ -147,12 +147,16 @@
     cursor: pointer;
     display: grid;
     place-items: center;
+    transition: color 120ms ease, background 120ms ease, transform 120ms var(--wm-ease, ease);
 }
 
 .wm-float__icon-btn:hover {
     background: oklch(95% 0.01 255);
     color: oklch(30% 0.04 255);
+    transform: translateY(-1px);
 }
+
+.wm-float__icon-btn:active { transform: scale(0.94); }
 
 .wm-float [data-webchat-mock] {
     flex: 1;

@@ -1,0 +1,45 @@
+---
+description: "[Apa yang dijelaskan topik ini dan kapan pembaca perlu menemukannya.]"
+tags:
+  - [taxonomy-tag]
+  - [taxonomy-tag]
+keywords:
+  - [alias-atau-frasa-pengguna]
+  - [akronim-atau-kepanjangannya]
+  - [intent-pencarian-terkait]
+  - [variasi-ejaan-atau-tanda-hubung]
+---
+
+# [Judul topik]
+
+## Gambaran umum
+
+[Jelaskan apa itu, mengapa diperlukan, dan konteks penggunaannya.]
+
+## Cara kerja
+
+[Jelaskan mekanisme dan konsep utamanya.]
+
+## Kapan digunakan
+
+[Tuliskan sinyal pemilihan yang konkret.]
+
+## Kapan tidak digunakan
+
+[Tuliskan batasan dan alternatif yang lebih sesuai.]
+
+## Trade-off dan pitfalls
+
+[Jelaskan biaya, risiko, dan kesalahan umum.]
+
+## Contoh
+
+[Berikan satu contoh ringkas dan realistis.]
+
+## Terkait
+
+- [Topik terkait](relative-path_id.md)
+
+## Referensi
+
+- [Sumber primer](https://example.com)

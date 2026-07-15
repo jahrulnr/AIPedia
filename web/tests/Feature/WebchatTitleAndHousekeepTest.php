@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Services\Webchat\Jsonl\WebchatJsonlStore;
 use App\Services\Webchat\WebchatConfig;
 use App\Services\Webchat\WebchatDocsIndex;
+use App\Services\Webchat\WebchatTitleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -74,6 +75,16 @@ class WebchatTitleAndHousekeepTest extends TestCase
         $this->assertSame('Judul Manual', $meta['title']);
     }
 
+    public function test_title_fallback_is_deterministic()
+    {
+        $title = (new WebchatTitleService(
+            WebchatConfig::load(),
+            new WebchatJsonlStore(WebchatConfig::load())
+        ))->fallbackTitle("  Pertanyaan   tentang\n dokumentasi  ");
+
+        $this->assertSame('Pertanyaan tentang dokumentasi', $title);
+    }
+
     public function test_housekeep_deletes_idle_conversations()
     {
         $created = $this->postJson('/aipedia/webchat/threads');
@@ -112,6 +123,8 @@ class WebchatTitleAndHousekeepTest extends TestCase
         $this->get('/dashboard')
             ->assertStatus(200)
             ->assertSee('id="wmFloat"', false)
+            ->assertSee('vendor/marked/marked.umd.js', false)
+            ->assertSee('vendor/dompurify/purify.min.js', false)
             ->assertSee('webchat-float.js', false);
     }
 
@@ -124,6 +137,12 @@ class WebchatTitleAndHousekeepTest extends TestCase
             ->assertSee('conversationList', false)
             ->assertSee('wc-room-head', false)
             ->assertSee('composer-send', false)
+            ->assertSee('id="renameDialog"', false)
+            ->assertSee('id="renameForm"', false)
+            ->assertSee('maxlength="60"', false)
+            ->assertDontSee('title_source=pending', false)
+            ->assertSee('vendor/marked/marked.umd.js', false)
+            ->assertSee('vendor/dompurify/purify.min.js', false)
             ->assertDontSee('scenario-bar--mock-only', false);
     }
 

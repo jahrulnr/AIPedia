@@ -10,12 +10,14 @@ class WebchatToolRegistry
     private WebchatConfig $cfg;
     private WebchatAllowlist $allowlist;
     private SearchDocsTool $searchDocs;
+    private WebchatDocsFilesystem $docsFilesystem;
 
     public function __construct(WebchatConfig $cfg, WebchatAllowlist $allowlist, SearchDocsTool $searchDocs)
     {
         $this->cfg = $cfg;
         $this->allowlist = $allowlist;
         $this->searchDocs = $searchDocs;
+        $this->docsFilesystem = new WebchatDocsFilesystem($cfg);
     }
 
     public function execute(string $name, array $args, array $admin = []): array
@@ -37,7 +39,21 @@ class WebchatToolRegistry
             return $env;
         }
 
-        return $this->fail('unknown_tool', 'Unknown tool', $name, $started);
+        try {
+            $env = match ($name) {
+                'list_dir' => $this->docsFilesystem->listDir($args),
+                'read_file' => $this->docsFilesystem->readFile($args),
+                'grep' => $this->docsFilesystem->grep($args),
+                default => $this->fail('unknown_tool', 'Unknown tool', $name, $started),
+            };
+            $env['tool'] = $name;
+            $env['meta']['took_ms'] = (int) ((microtime(true) - $started) * 1000);
+            return $env;
+        } catch (\InvalidArgumentException $e) {
+            return $this->fail('invalid_path', $e->getMessage(), $name, $started);
+        } catch (\Throwable $e) {
+            return $this->fail('tool_error', 'Internal docs tool error', $name, $started);
+        }
     }
 
     public function schemas(): array

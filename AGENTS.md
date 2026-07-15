@@ -1,4 +1,4 @@
-# AGENTS.md — Aipedia
+# AGENTS.md — AIPedia
 
 Instructions for any coding agent working in this repo.
 
@@ -52,8 +52,12 @@ Do **not** embed names or paths of other private product repos in docs, comments
 | Keep controllers thin | Put business logic in controllers |
 | Follow Laravel 8 conventions | Use Laravel 9++ features incompatible with 8.83 |
 | Test inside container (`make test`) | Assume PHP/composer on host |
-| Brand UI/docs as **Aipedia** | Reference or leak other CMS product codenames |
+| Brand UI/docs as **AIPedia** | Reference or leak other CMS product codenames |
 
 ## AI implementation
 
 AI/webchat behavior is specified in the sibling contracts repo `AI-ApiContracts` (webchat contract pack). Read that pack's `AGENTS.md` before implementing any AI feature. Do not hardcode private monorepo paths in committed docs.
+
+## Documentation authoring
+
+Use `.agents/skills/aipedia-doc-authoring/SKILL.md` whenever creating, updating, reviewing, or migrating documents under `web/docs/webchat`. It defines bilingual structure, natural technical prose guidance, metadata for lexical retrieval, templates, and validation.

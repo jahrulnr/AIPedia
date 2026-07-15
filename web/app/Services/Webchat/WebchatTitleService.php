@@ -83,6 +83,18 @@ class WebchatTitleService
         return $title;
     }
 
+    /**
+     * Deterministic title used when the optional title LLM is unavailable.
+     * Title generation must never leave a completed conversation pending.
+     */
+    public function fallbackTitle(string $userExcerpt): string
+    {
+        $title = preg_replace('/\s+/u', ' ', str_replace(["\r", "\n"], ' ', trim($userExcerpt)));
+        $title = mb_substr(trim((string) $title), 0, 60);
+
+        return $title !== '' ? $title : 'New chat';
+    }
+
     public function apply(string $threadId, int $adminUserId, string $title, string $source): void
     {
         $title = mb_substr(trim($title), 0, 60);

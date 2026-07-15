@@ -1,5 +1,5 @@
 /* Ported from mockup webchat-mock.css — do not add scenario chips in Blade. */
-/* Aipedia webchat mock — industrial instrument panel inside CMS shell */
+/* AIPedia webchat mock — industrial instrument panel inside CMS shell */
 
 :root {
     --wm-font: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -30,6 +30,50 @@
 
     --wm-radius: 0.85rem;
     --wm-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --wm-duration-fast: 120ms;
+    --wm-duration-base: 220ms;
+}
+
+[data-wc-tooltip] {
+    position: relative;
+}
+
+[data-wc-tooltip]::after {
+    content: attr(data-wc-tooltip);
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 0.45rem);
+    right: 0;
+    width: max-content;
+    max-width: 12rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid oklch(46% 0.025 255);
+    border-radius: 0.4rem;
+    background: oklch(29% 0.025 255 / 0.97);
+    color: oklch(98% 0.006 250);
+    box-shadow: 0 0.45rem 1rem oklch(22% 0.03 255 / 0.2);
+    font-family: var(--wm-font);
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-0.2rem) scale(0.97);
+    transform-origin: top right;
+    transition: opacity var(--wm-duration-fast) ease, transform var(--wm-duration-fast) var(--wm-ease);
+}
+
+[data-wc-tooltip]:hover::after,
+[data-wc-tooltip]:focus-visible::after {
+    opacity: 1;
+    transform: none;
+}
+
+button:focus-visible,
+input:focus-visible {
+    outline: 3px solid oklch(60% 0.15 245 / 0.24);
+    outline-offset: 2px;
 }
 
 .badge-mock {
@@ -132,6 +176,20 @@
         radial-gradient(1200px 400px at 10% -10%, oklch(96% 0.03 250 / 0.7), transparent 60%),
         radial-gradient(900px 300px at 90% 0%, oklch(97% 0.02 175 / 0.5), transparent 55%),
         var(--wm-bg);
+    scrollbar-width: thin;
+    scrollbar-color: oklch(78% 0.035 250) transparent;
+}
+
+.webchat-messages::-webkit-scrollbar,
+.wc-rail__list::-webkit-scrollbar { width: 0.45rem; }
+.webchat-messages::-webkit-scrollbar-track,
+.wc-rail__list::-webkit-scrollbar-track { background: transparent; }
+.webchat-messages::-webkit-scrollbar-thumb,
+.wc-rail__list::-webkit-scrollbar-thumb {
+    border: 0.12rem solid transparent;
+    border-radius: 999px;
+    background: oklch(78% 0.035 250);
+    background-clip: padding-box;
 }
 
 .chat-welcome {
@@ -197,6 +255,20 @@
 
 .msg__text {
     white-space: pre-wrap;
+}
+
+.model-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.18rem 0.45rem;
+    border: 1px solid var(--wm-border);
+    border-radius: 999px;
+    color: var(--wm-muted);
+    font-size: 0.68rem;
+    line-height: 1.2;
+    font-weight: 500;
 }
 
 .msg__meta {
@@ -461,12 +533,40 @@
 /* status + composer */
 
 .webchat-status {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
     padding: 0.45rem 1.2rem;
     font-size: 0.72rem;
     font-family: var(--wm-mono);
     color: var(--wm-muted);
     border-top: 1px solid var(--wm-border);
     background: var(--wm-surface);
+}
+
+.webchat-status::before {
+    content: '';
+    width: 0.42rem;
+    height: 0.42rem;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: var(--wm-muted);
+    box-shadow: 0 0 0 0.2rem oklch(55% 0.02 255 / 0.1);
+}
+
+.webchat-status[data-state="ready"]::before {
+    background: var(--wm-ok);
+    box-shadow: 0 0 0 0.2rem oklch(48% 0.12 155 / 0.12);
+}
+
+.webchat-status[data-state="danger"]::before {
+    background: var(--wm-fail);
+    box-shadow: 0 0 0 0.2rem oklch(50% 0.17 25 / 0.12);
+}
+
+.webchat-status[data-state="busy"]::before {
+    background: var(--wm-accent);
+    animation: wm-status-pulse 1.4s ease-in-out infinite;
 }
 
 .webchat-composer {
@@ -512,6 +612,13 @@
 .composer-input:focus {
     border-color: color-mix(in oklab, var(--wm-accent) 55%, white);
     box-shadow: 0 0 0 3px oklch(52% 0.16 250 / 0.15);
+}
+
+.composer-input:disabled {
+    color: var(--wm-muted);
+    background: oklch(96.5% 0.006 255);
+    border-color: var(--wm-border);
+    cursor: not-allowed;
 }
 
 .composer-send {
@@ -622,7 +729,8 @@
     position: absolute;
     left: 50%;
     bottom: 5.5rem;
-    transform: translateX(-50%);
+    opacity: 0;
+    transform: translate(-50%, 0.35rem) scale(0.98);
     z-index: 5;
     max-width: 90%;
     padding: 0.45rem 0.85rem;
@@ -632,7 +740,12 @@
     color: oklch(98% 0.01 250);
     background: oklch(32% 0.04 255 / 0.92);
     box-shadow: 0 0.4rem 1rem oklch(25% 0.03 255 / 0.25);
-    animation: wm-in 0.25s var(--wm-ease);
+    transition: opacity 180ms ease, transform 220ms var(--wm-ease);
+}
+
+.wc-toast.is-visible {
+    opacity: 1;
+    transform: translateX(-50%);
 }
 
 .webchat-card {
@@ -654,12 +767,35 @@
     40% { opacity: 1; transform: translateY(-3px); }
 }
 
-.msg__text {
-    white-space: normal;
+@keyframes wm-status-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 oklch(52% 0.16 250 / 0.25); }
+    50% { box-shadow: 0 0 0 0.28rem oklch(52% 0.16 250 / 0); }
 }
 
-.msg__text .msg__code,
-.msg__text code.msg__code {
+.msg__text {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.msg__text > :first-child { margin-top: 0; }
+.msg__text > :last-child { margin-bottom: 0; }
+
+.msg__text p,
+.msg__text ul,
+.msg__text ol,
+.msg__text blockquote,
+.msg__text table {
+    margin: 0.55rem 0;
+}
+
+.msg__text ul,
+.msg__text ol {
+    padding-left: 1.35rem;
+}
+
+.msg__text li + li { margin-top: 0.2rem; }
+
+.msg__text code {
     font-family: var(--wm-mono);
     font-size: 0.82em;
     background: var(--wm-accent-soft);
@@ -668,9 +804,8 @@
     border-radius: 0.3rem;
 }
 
-.msg__text .msg__pre,
-.msg__text pre.msg__pre {
-    margin: 0.55rem 0 0;
+.msg__text pre {
+    margin: 0.55rem 0;
     padding: 0.65rem 0.75rem;
     border-radius: 0.55rem;
     background: oklch(97% 0.01 255);
@@ -682,10 +817,75 @@
     line-height: 1.45;
 }
 
+.msg__text pre code {
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    font-size: inherit;
+}
+
 .msg__text a {
     color: var(--wm-accent);
     text-decoration: underline;
     text-underline-offset: 2px;
+}
+
+.msg__text h1,
+.msg__text h2,
+.msg__text h3,
+.msg__text h4,
+.msg__text h5,
+.msg__text h6 {
+    margin: 0.85rem 0 0.35rem;
+    line-height: 1.25;
+    color: var(--wm-ink);
+}
+
+.msg__text h1 { font-size: 1.15rem; }
+.msg__text h2 { font-size: 1.03rem; }
+.msg__text h3,
+.msg__text h4,
+.msg__text h5,
+.msg__text h6 { font-size: 0.94rem; }
+
+.msg__text blockquote {
+    padding-left: 0.75rem;
+    color: var(--wm-muted);
+    border-left: 3px solid var(--wm-border);
+}
+
+.msg__text table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+}
+
+.msg__text th,
+.msg__text td {
+    padding: 0.4rem 0.55rem;
+    text-align: left;
+    vertical-align: top;
+    border: 1px solid var(--wm-border);
+}
+
+.msg__text th {
+    background: oklch(97% 0.015 240);
+    color: var(--wm-ink);
+    font-weight: 700;
+}
+
+.msg__text hr {
+    margin: 0.8rem 0;
+    border: 0;
+    border-top: 1px solid var(--wm-border);
+}
+
+.msg__text input[type="checkbox"] {
+    margin-right: 0.35rem;
+    accent-color: var(--wm-accent);
 }
 
 .tool-row {
@@ -710,4 +910,19 @@
     .disclosure__summary { max-width: 38%; }
     .tool-row { grid-template-columns: 1fr; gap: 0.15rem; }
     .tool-row__result { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wm-float__panel,
+    .wc-dialog__panel,
+    .wc-dialog__backdrop,
+    .wc-toast,
+    [data-wc-tooltip]::after {
+        transition-duration: 0.01ms !important;
+    }
+
+    .webchat-status[data-state="busy"]::before,
+    .typing span {
+        animation: none !important;
+    }
 }

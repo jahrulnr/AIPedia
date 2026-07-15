@@ -19,6 +19,9 @@ class JsonlLine
     public ?array $envelope = null;
     public ?array $usage = null;
     public ?array $error = null;
+    public ?array $model = null;
+    public ?string $executor = null;
+    public ?string $origin = null;
 
     public function __construct(array $data = [])
     {

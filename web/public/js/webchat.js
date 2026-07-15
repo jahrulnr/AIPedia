@@ -11,9 +11,18 @@
     const newBtn = document.getElementById('btnNewChat') || document.getElementById('chatNew');
     const toastEl = document.getElementById('chatToast');
     const listEl = document.getElementById('conversationList');
+    const conversationCountEl = document.getElementById('conversationCount');
     const roomTitleEl = document.getElementById('roomTitle');
     const roomMetaEl = document.getElementById('roomMeta');
     const renameBtn = document.getElementById('btnRename');
+    const renameDialog = document.getElementById('renameDialog');
+    const renamePanel = renameDialog ? renameDialog.querySelector('.wc-dialog__panel') : null;
+    const renameForm = document.getElementById('renameForm');
+    const renameInput = document.getElementById('renameInput');
+    const renameCount = document.getElementById('renameCount');
+    const renameError = document.getElementById('renameDialogError');
+    const renameSubmit = document.getElementById('renameSubmit');
+    let renameReturnFocus = null;
 
     if (!messagesEl || !inputEl || !sendBtn || !statusEl) {
         return;
@@ -47,6 +56,12 @@
 
     function setStatus(text) {
         statusEl.textContent = text;
+        const normalized = String(text || '').toLowerCase();
+        let state = 'neutral';
+        if (/ready|hydrated|completed/.test(normalized)) state = 'ready';
+        else if (/failed|denied|locked|429|423|error/.test(normalized)) state = 'danger';
+        else if (/indexing|streaming|thinking|busy|stopping|sending/.test(normalized)) state = 'busy';
+        statusEl.dataset.state = state;
     }
 
     function showToast(text) {
@@ -56,8 +71,13 @@
         }
         toastEl.textContent = text;
         toastEl.hidden = false;
+        clearTimeout(showToast._hide);
+        requestAnimationFrame(function () { toastEl.classList.add('is-visible'); });
         clearTimeout(showToast._t);
-        showToast._t = setTimeout(function () { toastEl.hidden = true; }, 2800);
+        showToast._t = setTimeout(function () {
+            toastEl.classList.remove('is-visible');
+            showToast._hide = setTimeout(function () { toastEl.hidden = true; }, 180);
+        }, 2800);
     }
 
     function updateComposer() {
@@ -163,24 +183,33 @@
         return div.innerHTML;
     }
 
-    /** Safe subset markdown → HTML (escape first). */
+    /** Render GitHub-flavored Markdown, then sanitize all generated HTML. */
     function formatMarkdown(text) {
-        let s = escapeHtml(text == null ? '' : String(text));
-        const blocks = [];
-        s = s.replace(/```([\s\S]*?)```/g, function (_m, code) {
-            const i = blocks.length;
-            blocks.push('<pre class="msg__pre"><code>' + code.replace(/^\n/, '') + '</code></pre>');
-            return '\u0000B' + i + '\u0000';
+        const source = String(text == null ? '' : text)
+            .replace(/^[\u200B\u200C\u200D\u200E\u200F\uFEFF]+/, '');
+
+        if (!window.marked || typeof window.marked.parse !== 'function' || !window.DOMPurify) {
+            return escapeHtml(source).replace(/\n/g, '<br>');
+        }
+
+        const rendered = window.marked.parse(source, {
+            gfm: true,
+            breaks: true
         });
-        s = s.replace(/`([^`\n]+)`/g, '<code class="msg__code">$1</code>');
-        s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-        s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-        s = s.replace(/\n/g, '<br>');
-        s = s.replace(/\u0000B(\d+)\u0000/g, function (_m, i) {
-            return blocks[Number(i)] || '';
+        const clean = window.DOMPurify.sanitize(rendered, {
+            USE_PROFILES: { html: true },
+            FORBID_TAGS: ['style', 'form', 'button', 'textarea', 'select', 'option', 'iframe'],
+            FORBID_ATTR: ['style']
         });
-        return s;
+
+        const template = document.createElement('template');
+        template.innerHTML = clean;
+        template.content.querySelectorAll('a[href]').forEach(function (link) {
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+        });
+
+        return template.innerHTML;
     }
 
     function summarizeToolResult(envelope) {
@@ -206,6 +235,16 @@
         return String(name || 'tool') + '()';
     }
 
+    function modelLabel(model) {
+        if (!model || !model.id) return '';
+        return (model.provider ? String(model.provider) + ' · ' : '') + String(model.id);
+    }
+
+    function modelBadge(model) {
+        const label = modelLabel(model);
+        return label ? '<span class="model-badge">' + escapeHtml(label) + '</span>' : '';
+    }
+
     function disclosureHtml(kind, block) {
         if (!block) return '';
         const isThink = kind === 'think';
@@ -228,7 +267,7 @@
             body = '<div class="tool-rows">' + items.map(function (row) {
                 return (
                     '<div class="tool-row">' +
-                    '<div class="tool-row__call">' + escapeHtml(row.call) + '</div>' +
+                    '<div class="tool-row__call">' + escapeHtml(row.call) + modelBadge(row.model) + '</div>' +
                     '<div class="tool-row__result' + (row.ok === false ? ' is-fail' : '') + '">' +
                     escapeHtml(row.result) + '</div></div>'
                 );
@@ -239,6 +278,7 @@
             '<button type="button" class="disclosure__toggle" aria-expanded="' + (open ? 'true' : 'false') + '">' +
             '<span class="disclosure__chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>' +
             '<span class="disclosure__title">' + title + '</span>' +
+            modelBadge(block.model) +
             '<span class="disclosure__summary">' + escapeHtml(summary) + '</span></button>' +
             '<div class="disclosure__body">' + body + '</div></div>'
         );
@@ -252,7 +292,7 @@
             messagesEl.innerHTML =
                 '<div class="chat-welcome">' +
                 '<div class="chat-welcome-icon"><i class="bi bi-stars"></i></div>' +
-                '<h5>Selamat datang di Aipedia AI</h5>' +
+                '<h5>Selamat datang di AIPedia</h5>' +
                 '<p class="text-muted small mb-0">Shared room · lazy create on send · Stop hanya initiator.</p></div>';
         } else {
             messagesEl.innerHTML = '';
@@ -277,6 +317,7 @@
         const inner =
             disclosureHtml('think', {
                 open: false,
+                model: state.thinkingModel,
                 summary: state.thinkingSteps.length
                     ? (state.thinkingSteps.length + ' step' + (state.thinkingSteps.length === 1 ? '' : 's'))
                     : 'Reasoning hidden',
@@ -288,7 +329,7 @@
                 items: state.tools,
             }) +
             (state.text
-                ? '<div class="msg__text">' + formatMarkdown(state.text) + '</div>'
+                ? modelBadge(state.responseModel) + '<div class="msg__text">' + formatMarkdown(state.text) + '</div>'
                 : '');
         const bubble = state.art.querySelector('.msg__bubble');
         if (bubble) bubble.innerHTML = inner || '<div class="typing" aria-label="Thinking"><span></span><span></span><span></span></div>';
@@ -305,7 +346,7 @@
         art.dataset.turnId = key;
         art.innerHTML = '<div class="msg__bubble"></div>';
         messagesEl.appendChild(art);
-        turnUi[key] = { art: art, thinkingSteps: [], tools: [], text: '' };
+        turnUi[key] = { art: art, thinkingSteps: [], thinkingModel: null, tools: [], responseModel: null, text: '' };
         paintTurnBubble(turnUi[key]);
         return turnUi[key];
     }
@@ -581,6 +622,7 @@
         const state = ensureTurnUi(item.turn_id);
         const chunks = text.split(/\n+/).map(function (s) { return s.trim(); }).filter(Boolean);
         state.thinkingSteps = state.thinkingSteps.concat(chunks.length ? chunks : [text]);
+        state.thinkingModel = item.model || state.thinkingModel;
         paintTurnBubble(state);
     }
 
@@ -590,12 +632,14 @@
         const existing = state.tools.find(function (t) { return t.callId === callId; });
         if (existing) {
             existing.call = formatToolCall(item.name, item.arguments || {});
+            existing.model = item.model || existing.model || null;
         } else {
             state.tools.push({
                 callId: callId,
                 call: formatToolCall(item.name, item.arguments || {}),
                 result: '…',
                 ok: true,
+                model: item.model || null,
             });
         }
         paintTurnBubble(state);
@@ -623,6 +667,7 @@
     function applyAgentMessage(item) {
         const state = ensureTurnUi(item.turn_id);
         state.text = item.text || '';
+        state.responseModel = item.model || null;
         if (item.id) state.art.dataset.id = item.id;
         paintTurnBubble(state);
     }
@@ -710,12 +755,20 @@
         roomTitleEl.textContent = displayTitle(meta || { title: null });
         if (roomMetaEl) {
             const src = (meta && meta.title_source) || 'pending';
-            roomMetaEl.textContent = 'title_source=' + src;
+            roomMetaEl.textContent = src === 'manual' ? 'Manual title' : (src === 'auto' ? 'Auto title' : 'Naming…');
         }
+    }
+
+    function sourceLabel(source) {
+        if (source === 'manual') return 'Renamed';
+        if (source === 'auto') return 'Auto';
+        if (source === 'stale') return 'Stale';
+        return 'Naming…';
     }
 
     function renderConversationList() {
         if (!listEl) return;
+        if (conversationCountEl) conversationCountEl.textContent = String(conversations.length);
         listEl.innerHTML = '';
         conversations.forEach(function (c) {
             const li = document.createElement('li');
@@ -727,7 +780,7 @@
             btn.innerHTML =
                 '<span class="wc-conv__title' + (pending ? ' is-pending' : '') + '">' +
                 escapeHtml(displayTitle(c)) + '</span>' +
-                '<span class="wc-pill wc-pill--' + escapeHtml(src) + '">' + escapeHtml(src) + '</span>' +
+                '<span class="wc-pill wc-pill--' + escapeHtml(src) + '">' + escapeHtml(sourceLabel(src)) + '</span>' +
                 '<span class="wc-conv__meta">' +
                 '<span class="wc-conv__by">#' + escapeHtml(String(c.created_by_admin_user_id || c.admin_user_id || '?')) + '</span>' +
                 '<span>' + escapeHtml(relTime(c.last_activity_at || c.updated_at)) + '</span>' +
@@ -921,23 +974,106 @@
         });
     }
     if (newBtn) newBtn.addEventListener('click', newChat);
-    if (renameBtn) {
-        renameBtn.addEventListener('click', function () {
-            if (!threadId) {
-                showToast('Kirim dulu untuk buat room');
+    function setRenameError(message) {
+        if (!renameError || !renameInput) return;
+        renameError.textContent = message || '';
+        renameError.hidden = !message;
+        renameInput.setAttribute('aria-invalid', message ? 'true' : 'false');
+        renameDialog.classList.toggle('has-error', !!message);
+    }
+
+    function updateRenameCount() {
+        if (!renameInput || !renameCount) return;
+        renameCount.textContent = renameInput.value.length + '/60';
+    }
+
+    function openRenameDialog() {
+        if (!threadId || !renameDialog || !renameInput) {
+            showToast('Kirim pesan dulu untuk membuat room');
+            return;
+        }
+        renameReturnFocus = document.activeElement && document.activeElement !== document.body
+            ? document.activeElement
+            : renameBtn;
+        const current = roomTitleEl ? roomTitleEl.textContent.trim() : '';
+        renameInput.value = current === 'New chat' ? '' : current;
+        updateRenameCount();
+        setRenameError('');
+        renameDialog.hidden = false;
+        document.body.classList.add('has-wc-dialog');
+        requestAnimationFrame(function () {
+            renameDialog.classList.add('is-open');
+            setTimeout(function () { renameInput.focus(); renameInput.select(); }, 120);
+        });
+    }
+
+    function closeRenameDialog() {
+        if (!renameDialog || renameDialog.hidden || (renameSubmit && renameSubmit.disabled)) return;
+        renameDialog.classList.remove('is-open', 'has-error');
+        document.body.classList.remove('has-wc-dialog');
+        setTimeout(function () {
+            renameDialog.hidden = true;
+            if (renameReturnFocus && typeof renameReturnFocus.focus === 'function') renameReturnFocus.focus();
+        }, 180);
+    }
+
+    if (renameBtn) renameBtn.addEventListener('click', openRenameDialog);
+    if (renameDialog) {
+        renameDialog.querySelectorAll('[data-rename-close]').forEach(function (button) {
+            button.addEventListener('click', closeRenameDialog);
+        });
+        renameDialog.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeRenameDialog();
                 return;
             }
-            const current = roomTitleEl ? roomTitleEl.textContent : '';
-            const next = window.prompt('Rename conversation', current === 'New chat' ? '' : current);
-            if (next == null) return;
-            const title = String(next).trim();
-            if (!title) return;
+            if (event.key !== 'Tab' || !renamePanel) return;
+            const focusable = Array.from(renamePanel.querySelectorAll('button:not([disabled]), input:not([disabled])'));
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        });
+    }
+    if (renameInput) {
+        renameInput.addEventListener('input', function () {
+            updateRenameCount();
+            if (renameInput.value.trim()) setRenameError('');
+        });
+    }
+    if (renameForm) {
+        renameForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const title = renameInput ? renameInput.value.trim() : '';
+            if (!title) {
+                setRenameError('Enter a title before saving.');
+                renameInput.focus();
+                return;
+            }
+            if (title.length > 60) {
+                setRenameError('Keep the title within 60 characters.');
+                renameInput.focus();
+                return;
+            }
+            if (roomTitleEl && title === roomTitleEl.textContent.trim()) {
+                closeRenameDialog();
+                return;
+            }
+            renameSubmit.disabled = true;
+            renameSubmit.classList.add('is-loading');
             renameThread(threadId, title).then(function () {
                 updateRoomHead({ title: title, title_source: 'manual' });
                 refreshConversationList();
-                showToast('Renamed');
-            }).catch(function (e) {
-                showToast(e.message || 'Rename failed');
+                renameSubmit.disabled = false;
+                renameSubmit.classList.remove('is-loading');
+                closeRenameDialog();
+                showToast('Conversation title updated');
+            }).catch(function (error) {
+                renameSubmit.disabled = false;
+                renameSubmit.classList.remove('is-loading');
+                setRenameError(error.message || 'Could not rename this conversation.');
             });
         });
     }

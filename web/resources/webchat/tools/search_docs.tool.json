@@ -1,17 +1,13 @@
 {
   "type": "function",
   "name": "search_docs",
-  "description": "Search tutorials/SOPs shipped as Markdown files in the app repo (docs/webchat), not CMS database content. Returns short chunks with path citations. Use for how-to and field meaning questions. Do not use for live entity status — use get/list tools instead.",
+  "description": "Search the application's internal documentation corpus, not CMS database content. Returns short grounded excerpts for the assistant; returned paths are internal metadata and are not user-accessible. Use for how-to and field meaning questions. Do not use for live entity status — use available live-read tools instead.",
   "parameters": {
     "type": "object",
     "properties": {
       "query": {
         "type": "string",
         "description": "Natural language question or keywords"
-      },
-      "domain": {
-        "type": "string",
-        "description": "Optional domain filter, e.g. voucher, package, config"
       },
       "top_k": {
         "type": "integer",

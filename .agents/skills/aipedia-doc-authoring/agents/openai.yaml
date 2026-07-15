@@ -1,0 +1,4 @@
+interface:
+  display_name: "AIPedia Docs Authoring"
+  short_description: "Write searchable bilingual AIPedia docs"
+  default_prompt: "Use $aipedia-doc-authoring to create or update searchable bilingual documentation."

@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Services\Webchat\Agent\WebchatAllowlist;
 use App\Services\Webchat\Agent\WebchatInvariants;
 use App\Services\Webchat\Agent\WebchatLlmClient;
+use App\Services\Webchat\Agent\WebchatLlmRouter;
+use App\Services\Webchat\Agent\WebchatContextCompactor;
 use App\Services\Webchat\Agent\WebchatPromptBuilder;
 use App\Services\Webchat\Jsonl\JsonlLine;
 use App\Services\Webchat\Jsonl\WebchatJsonlStore;
@@ -12,6 +14,7 @@ use App\Services\Webchat\Jsonl\WebchatThreadLock;
 use App\Services\Webchat\Tools\SearchDocsTool;
 use App\Services\Webchat\Tools\WebchatToolRegistry;
 use App\Services\Webchat\WebchatConfig;
+use App\Services\Webchat\WebchatDocsIndex;
 use App\Services\Webchat\WebchatTitleService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -192,6 +195,7 @@ class ProcessChatTurnJob implements ShouldQueue
             'usage' => [
                 'input_tokens' => 0,
                 'cached_input_tokens' => 0,
+                'cache_write_tokens' => 0,
                 'output_tokens' => 0,
                 'reasoning_output_tokens' => 0,
             ],
@@ -206,12 +210,6 @@ class ProcessChatTurnJob implements ShouldQueue
         $searchDocs = new SearchDocsTool($cfg);
         $registry = new WebchatToolRegistry($cfg, $allowlist, $searchDocs);
 
-        $invariants->assert();
-
-        $lines = $store->readThread($this->threadId);
-        $messages = $this->buildMessages($lines);
-        $messages = $prompts->build($messages, $this->admin);
-
         $tools = $registry->schemas();
         $toolNames = [];
         foreach ($tools as $t) {
@@ -219,9 +217,34 @@ class ProcessChatTurnJob implements ShouldQueue
                 $toolNames[] = $t['function']['name'];
             }
         }
+        $docsIndexMeta = (new WebchatDocsIndex($cfg))->statusMeta();
+
+        $invariants->assert();
+
+        $lines = $store->readThread($this->threadId);
+        $compaction = (new WebchatContextCompactor($cfg))->compact($lines);
+        if ($compaction !== null) {
+            $this->appendLine($store, $cfg, [
+                'thread_id' => $this->threadId,
+                'turn_id' => $this->turnId,
+                'type' => 'context_compacted',
+                'id' => 'itm_' . $this->newUlid(),
+                'text' => $compaction['summary'],
+                'origin' => 'runtime',
+            ]);
+            $lines = $store->readThread($this->threadId);
+        }
+        $messages = $this->buildMessages($lines);
+        $promptAdmin = array_merge($this->admin, [
+            'available_tools' => $toolNames !== [] ? implode(', ', $toolNames) : '(none)',
+            'indexed_document_count' => (string) ((int) ($docsIndexMeta['document_count'] ?? 0)),
+        ]);
+        $messages = $prompts->build($messages, $promptAdmin);
+
         $invariants->assert($toolNames);
 
-        $llm = new WebchatLlmClient($cfg);
+        $llm = new WebchatLlmRouter($cfg, new WebchatLlmClient($cfg));
+        $pinnedProvider = null;
 
         $rounds = 0;
         $lastToolOnly = false;
@@ -229,6 +252,7 @@ class ProcessChatTurnJob implements ShouldQueue
             'usage' => [
                 'input_tokens' => 0,
                 'cached_input_tokens' => 0,
+                'cache_write_tokens' => 0,
                 'output_tokens' => 0,
                 'reasoning_output_tokens' => 0,
             ],
@@ -247,7 +271,8 @@ class ProcessChatTurnJob implements ShouldQueue
                 return;
             }
 
-            $resp = $llm->chat($messages, $tools);
+            $resp = $llm->chat($messages, $tools, $pinnedProvider);
+            $pinnedProvider = (string) ($resp['model']['provider'] ?? $pinnedProvider);
 
             $reasoning = trim((string) ($resp['reasoning_text'] ?? ''));
             if ($reasoning !== '') {
@@ -257,6 +282,7 @@ class ProcessChatTurnJob implements ShouldQueue
                     'type' => 'reasoning',
                     'id' => 'itm_' . $this->newUlid(),
                     'text' => mb_substr($reasoning, 0, 12000),
+                    'model' => $this->modelMetadata($resp, 'reasoning'),
                 ]);
             }
 
@@ -277,6 +303,7 @@ class ProcessChatTurnJob implements ShouldQueue
                         'call_id' => $callId,
                         'name' => $tc['name'],
                         'arguments' => $tc['arguments'],
+                        'model' => $this->modelMetadata($resp, 'planner'),
                     ]);
 
                     Log::info('webchat.tool_call', [
@@ -295,6 +322,7 @@ class ProcessChatTurnJob implements ShouldQueue
                         'id' => 'itm_' . $this->newUlid(),
                         'call_id' => $callId,
                         'envelope' => $envelope,
+                        'executor' => 'host_tool',
                     ]);
 
                     $messages[] = [
@@ -313,6 +341,7 @@ class ProcessChatTurnJob implements ShouldQueue
                 'type' => 'agent_message',
                 'id' => 'itm_' . $this->newUlid(),
                 'text' => $resp['assistant_text'] !== '' ? $resp['assistant_text'] : '(empty model response)',
+                'model' => $this->modelMetadata($resp, 'response'),
             ]);
             $lastToolOnly = false;
             break;
@@ -325,6 +354,7 @@ class ProcessChatTurnJob implements ShouldQueue
                 'type' => 'agent_message',
                 'id' => 'itm_' . $this->newUlid(),
                 'text' => 'Stopped: max tool rounds reached. Please refine the question.',
+                'origin' => 'runtime',
             ]);
         }
 
@@ -336,45 +366,61 @@ class ProcessChatTurnJob implements ShouldQueue
             'usage' => $resp['usage'] ?? [
                 'input_tokens' => 0,
                 'cached_input_tokens' => 0,
+                'cache_write_tokens' => 0,
                 'output_tokens' => 0,
                 'reasoning_output_tokens' => 0,
             ],
+            'model' => isset($resp['model']) ? $this->modelMetadata($resp, 'response') : null,
         ]);
     }
 
     private function buildMessages(array $lines): array
     {
         $msgs = [];
-        foreach ($lines as $line) {
+        foreach ($lines as $index => $line) {
             $type = $line['type'] ?? '';
-            if ($type === 'user_message') {
-                $msgs[] = ['role' => 'user', 'content' => $line['text'] ?? ''];
-            } elseif ($type === 'agent_message') {
-                $msgs[] = ['role' => 'assistant', 'content' => $line['text'] ?? ''];
-            } elseif ($type === 'tool_call') {
-                $msgs[] = [
-                    'role' => 'assistant',
-                    'content' => null,
-                    'tool_calls' => [
-                        [
-                            'id' => $line['call_id'] ?? '',
-                            'type' => 'function',
-                            'function' => [
-                                'name' => $line['name'] ?? '',
-                                'arguments' => json_encode($line['arguments'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                            ],
-                        ],
-                    ],
-                ];
-            } elseif ($type === 'tool_result') {
-                $msgs[] = [
-                    'role' => 'tool',
-                    'tool_call_id' => $line['call_id'] ?? '',
-                    'content' => json_encode($line['envelope'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                ];
+            if ($type === 'context_compacted') {
+                $msgs = [[
+                    'role' => 'system',
+                    'content' => "Conversation summary:\n" . (string) ($line['text'] ?? ''),
+                ]];
+                $currentTurn = (string) ($line['turn_id'] ?? '');
+                foreach (array_slice($lines, 0, $index) as $previous) {
+                    if ((string) ($previous['turn_id'] ?? '') !== $currentTurn) {
+                        continue;
+                    }
+                    $this->appendMessageFromLine($msgs, $previous);
+                }
+                continue;
             }
+            $this->appendMessageFromLine($msgs, $line);
         }
         return $msgs;
+    }
+
+    private function appendMessageFromLine(array &$messages, array $line): void
+    {
+        $type = $line['type'] ?? '';
+        if ($type === 'user_message') {
+            $messages[] = ['role' => 'user', 'content' => $line['text'] ?? ''];
+        } elseif ($type === 'agent_message') {
+            $messages[] = ['role' => 'assistant', 'content' => $line['text'] ?? ''];
+        } elseif ($type === 'tool_call') {
+            $messages[] = [
+                'role' => 'assistant', 'content' => null, 'tool_calls' => [[
+                    'id' => $line['call_id'] ?? '', 'type' => 'function', 'function' => [
+                        'name' => $line['name'] ?? '',
+                        'arguments' => json_encode($line['arguments'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    ],
+                ]],
+            ];
+        } elseif ($type === 'tool_result') {
+            $messages[] = [
+                'role' => 'tool',
+                'tool_call_id' => $line['call_id'] ?? '',
+                'content' => json_encode($line['envelope'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ];
+        }
     }
 
     private function appendLine(WebchatJsonlStore $store, WebchatConfig $cfg, array $data): void
@@ -382,6 +428,18 @@ class ProcessChatTurnJob implements ShouldQueue
         $line = new \App\Services\Webchat\Jsonl\JsonlLine($data);
         $line->ts = $line->ts ?? microtime(true);
         $store->appendThreadLine($line);
+    }
+
+    /** @return array{provider:string,id:string,api:string,role:string} */
+    private function modelMetadata(array $response, string $role): array
+    {
+        $model = is_array($response['model'] ?? null) ? $response['model'] : [];
+        return [
+            'provider' => (string) ($model['provider'] ?? 'unknown'),
+            'id' => (string) ($model['id'] ?? 'unknown'),
+            'api' => (string) ($model['api'] ?? 'unknown'),
+            'role' => $role,
+        ];
     }
 
     private function isInterrupted(WebchatConfig $cfg): bool

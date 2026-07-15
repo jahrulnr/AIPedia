@@ -45,11 +45,12 @@ class ProcessThreadTitleJob implements ShouldQueue
         try {
             $title = $titles->generate($this->userExcerpt, $this->agentExcerpt, $this->locale);
         } catch (\Throwable $e) {
-            Log::warning('webchat.title_failed', [
+            $title = $titles->fallbackTitle($this->userExcerpt);
+            Log::warning('webchat.title_fallback', [
                 'thread_id' => $this->threadId,
                 'message' => $e->getMessage(),
+                'title' => $title,
             ]);
-            return;
         }
 
         try {
