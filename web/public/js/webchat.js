@@ -267,7 +267,7 @@
             body = '<div class="tool-rows">' + items.map(function (row) {
                 return (
                     '<div class="tool-row">' +
-                    '<div class="tool-row__call">' + escapeHtml(row.call) + modelBadge(row.model) + '</div>' +
+                    '<div class="tool-row__call">' + modelBadge(row.model) + "<br/>" + escapeHtml(row.call) + '</div>' +
                     '<div class="tool-row__result' + (row.ok === false ? ' is-fail' : '') + '">' +
                     escapeHtml(row.result) + '</div></div>'
                 );
