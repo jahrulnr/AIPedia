@@ -25,14 +25,10 @@ class WebchatToolRegistry
     public function execute(string $name, array $args, array $admin = []): array
     {
         $started = microtime(true);
-        $allowed = $this->allowlist->forPhase($this->cfg->phase, $this->cfg->writeEnabled);
+        $allowed = $this->allowlist->tools();
 
         if (!in_array($name, $allowed, true)) {
             return $this->fail('tool_not_allowed', 'Tool not allowlisted', $name, $started);
-        }
-
-        if (in_array($name, ['draft_mutation', 'confirm_mutation'], true) && $this->cfg->writeEnabled === false) {
-            return $this->fail('write_disabled', 'Writes are disabled', $name, $started);
         }
 
         $args = $this->argumentHealer->heal($args, $this->parametersFor($name));
@@ -62,7 +58,7 @@ class WebchatToolRegistry
 
     public function schemas(): array
     {
-        $allowed = $this->allowlist->forPhase($this->cfg->phase, $this->cfg->writeEnabled);
+        $allowed = $this->allowlist->tools();
         $out = [];
 
         foreach ($allowed as $name) {

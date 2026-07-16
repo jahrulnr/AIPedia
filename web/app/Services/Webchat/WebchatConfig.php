@@ -7,7 +7,6 @@ class WebchatConfig
     public string $docsRoot;
     public string $storageRoot;
     public string $docsAppId;
-    public bool $writeEnabled;
     public string $llmStrategy;
     public string $llmActiveProvider;
     public int $llmTotalAttemptBudget;
@@ -23,7 +22,6 @@ class WebchatConfig
     /** @var string chat|responses */
     public string $llmApi;
     public int $maxToolRounds;
-    public int $phase;
     public bool $llmStub;
     public string $promptsRoot;
     public string $toolsRoot;
@@ -68,7 +66,6 @@ class WebchatConfig
         $self->docsRoot = (string) $cfg['docs_root'];
         $self->storageRoot = (string) $cfg['storage_root'];
         $self->docsAppId = trim((string) ($cfg['docs_app_id'] ?? 'aipedia')) ?: 'aipedia';
-        $self->writeEnabled = (bool) $cfg['write_enabled'];
         $self->llmStrategy = strtolower((string) ($cfg['llm_strategy'] ?? 'failover'));
         if (!in_array($self->llmStrategy, ['switch', 'failover', 'round_robin'], true)) {
             throw new \RuntimeException('invalid WEBCHAT_LLM_STRATEGY: ' . $self->llmStrategy);
@@ -111,7 +108,6 @@ class WebchatConfig
         $self->llmApi = $active['api'];
         $self->llmTimeoutSec = $active['timeout_sec'];
         $self->maxToolRounds = (int) $cfg['max_tool_rounds'];
-        $self->phase = (int) $cfg['phase'];
         $self->llmStub = (bool) $cfg['llm_stub'];
         $self->promptsRoot = (string) $cfg['prompts_root'];
         $self->toolsRoot = (string) $cfg['tools_root'];

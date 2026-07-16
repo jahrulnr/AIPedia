@@ -4,7 +4,6 @@ return [
     'docs_root' => env('WEBCHAT_DOCS_ROOT', base_path('docs/webchat')),
     'docs_app_id' => env('WEBCHAT_DOCS_APP_ID', 'aipedia'),
     'storage_root' => env('WEBCHAT_STORAGE_ROOT', storage_path('app/webchat')),
-    'write_enabled' => false,
     'llm_stub' => false,
     'llm_strategy' => env('WEBCHAT_LLM_STRATEGY', 'failover'),
     'llm_active_provider' => env('WEBCHAT_LLM_ACTIVE_PROVIDER', ''),
@@ -42,7 +41,6 @@ return [
         return $providers;
     })(),
     'max_tool_rounds' => (int) env('WEBCHAT_MAX_TOOL_ROUNDS', 8),
-    'phase' => (int) env('WEBCHAT_PHASE', 2),
     'prompts_root' => resource_path('webchat/prompts'),
     'tools_root' => resource_path('webchat/tools'),
     'docs_top_k' => (int) env('WEBCHAT_DOCS_TOP_K', 5),

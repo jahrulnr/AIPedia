@@ -31,9 +31,6 @@ class WebchatPromptBuilder
             $developer = str_replace('{{' . $key . '}}', (string) $value, $developer);
         }
 
-        $system = str_replace('{{write_enabled}}', 'false', $system);
-        $developer = str_replace('{{write_enabled}}', 'false', $developer);
-
         $out = [
             ['role' => 'system', 'content' => $system],
             // Keep application instructions as system for provider compatibility.

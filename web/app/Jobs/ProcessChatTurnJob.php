@@ -62,7 +62,6 @@ class ProcessChatTurnJob implements ShouldQueue
         Log::info($this->resume ? 'webchat.turn_resume' : 'webchat.turn_start', [
             'thread_id' => $this->threadId,
             'turn_id' => $this->turnId,
-            'phase' => $cfg->phase,
             'llm_stub' => $cfg->llmStub,
             'llm_api' => $cfg->llmApi,
             'llm_model' => $cfg->llmModel,
@@ -125,7 +124,7 @@ class ProcessChatTurnJob implements ShouldQueue
                 'active_turn_initiator_admin_id' => (int) ($this->admin['admin_user_id'] ?? 0),
             ]));
 
-            if ($cfg->phase <= 1 || $cfg->llmStub) {
+            if ($cfg->llmStub) {
                 $this->runStub($store, $cfg);
             } else {
                 $this->runAgent($store, $cfg);
@@ -204,8 +203,8 @@ class ProcessChatTurnJob implements ShouldQueue
 
     private function runAgent(WebchatJsonlStore $store, WebchatConfig $cfg): void
     {
-        $allowlist = new WebchatAllowlist($cfg);
-        $invariants = new WebchatInvariants($cfg, $allowlist);
+        $allowlist = new WebchatAllowlist();
+        $invariants = new WebchatInvariants($allowlist);
         $prompts = new WebchatPromptBuilder($cfg);
         $searchDocs = new SearchDocsTool($cfg);
         $registry = new WebchatToolRegistry($cfg, $allowlist, $searchDocs);
