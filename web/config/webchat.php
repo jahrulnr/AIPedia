@@ -5,7 +5,7 @@ return [
     'docs_app_id' => env('WEBCHAT_DOCS_APP_ID', 'aipedia'),
     'storage_root' => env('WEBCHAT_STORAGE_ROOT', storage_path('app/webchat')),
     'write_enabled' => false,
-    'llm_stub' => env('WEBCHAT_LLM_STUB', true),
+    'llm_stub' => false,
     'llm_strategy' => env('WEBCHAT_LLM_STRATEGY', 'failover'),
     'llm_active_provider' => env('WEBCHAT_LLM_ACTIVE_PROVIDER', ''),
     'llm_total_attempt_budget' => (int) env('WEBCHAT_LLM_TOTAL_ATTEMPT_BUDGET', 4),
@@ -16,7 +16,7 @@ return [
         explode(',', (string) env('WEBCHAT_LLM_RETRY_STATUSES', '408,409,413,425,429,500,502,503,504'))
     ), static fn (int $status): bool => $status > 0)),
     'llm_providers' => (function (): array {
-        $raw = (string) env('WEBCHAT_LLM_PROVIDERS', '');
+        $raw = (string) env('WEBCHAT_LLM_PROVIDERS', 'OPENROUTER');
         $ids = array_values(array_filter(array_map('trim', explode(',', $raw)), static fn ($id) => $id !== ''));
         $providers = [];
 
@@ -28,7 +28,7 @@ return [
                 'base_url' => env($prefix . 'BASE_URL', ''),
                 'api_key' => env($prefix . 'API_KEY', ''),
                 'model' => env($prefix . 'MODEL', ''),
-                'api' => env($prefix . 'API', 'chat'),
+                'api' => env($prefix . 'API', 'responses'),
                 'timeout_sec' => (int) env($prefix . 'TIMEOUT_SEC', env('WEBCHAT_LLM_TIMEOUT_SEC', 60)),
                 'max_attempts' => (int) env($prefix . 'MAX_ATTEMPTS', 1),
                 'weight' => (int) env($prefix . 'WEIGHT', 1),
